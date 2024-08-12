@@ -1,6 +1,94 @@
 from pypdf import PdfWriter #pip install pypdf #pdf병합기능 쓰기 위해.
 from datetime import datetime #병합된 pdf이름에 오늘 날짜 쓰기 위해.
 import pandas as pd #pip install pandas openpyxl #엑셀의 데이터를 읽어오기 위해.
+import re
+
+####각 상품의 중량 알아내기
+def extract_weight_from_name(product_name):
+    """
+    상품명에서 중량을 추출하는 함수.
+    
+    Args:
+        product_name (str): 상품명
+    
+    Returns:
+        float: 추출된 중량. 중량이 없을 경우 None.
+    """
+    if not isinstance(product_name, str):
+        return None
+    
+    # ml을 g로 간주하여 인식
+    product_name = product_name.lower().replace('ml', 'g')
+    
+    match = re.search(r'(\d+(\.\d+)?)\s*(kg|g)', product_name, re.IGNORECASE)
+    
+    if match:
+        weight = float(match.group(1))
+        unit = match.group(3).lower()
+        
+        # 단위가 g일 경우 kg으로 변환
+        if unit == 'g':
+            weight = weight / 1000
+        
+        return weight
+    else:
+        return None
+
+def extract_weight_from_option(option):
+    """
+    상품옵션에서 중량을 추출하는 함수.
+    
+    Args:
+        option (str): 상품옵션
+    
+    Returns:
+        float: 추출된 중량. 중량이 없을 경우 None.
+    """
+    if not isinstance(option, str):
+        return None
+    
+    # "중량=1.5kg" 또는 "중량=150g" 형식에서 중량을 추출
+    match = re.search(r'중량=(\d+(\.\d+)?)\s*(kg|g)', option, re.IGNORECASE)
+    
+    if match:
+        weight = float(match.group(1))
+        unit = match.group(3).lower()
+        
+        # 단위가 g일 경우 kg으로 변환
+        if unit == 'g':
+            weight = weight / 1000
+        
+        return weight
+    else:
+        return None
+
+def get_final_weight(row):
+    """
+    중량을 추출하는 함수. 주어진 규칙에 따라 중량 값을 반환합니다.
+    
+    Args:
+        row (pd.Series): 엑셀 파일의 한 행 데이터
+    
+    Returns:
+        float: 중량 값
+    """
+    # 1. 중량 열에 데이터가 있으면 그 값을 사용
+    if pd.notna(row['중량']):
+        return row['중량']
+    
+    # 2. 상품옵션에 중량 데이터가 있고, 그 값이 중량과 다르면 상품옵션의 중량을 사용
+    weight_from_option = extract_weight_from_option(row['상품옵션'])
+    if weight_from_option is not None:
+        return weight_from_option
+    
+    # 3. 상품옵션과 중량에도 데이터가 없으면 상품명에서 중량을 가져옴
+    weight_from_name = extract_weight_from_name(row['상품명(한국어 쇼핑몰)'])
+    if weight_from_name is not None:
+        return weight_from_name
+    
+    # 중량을 찾을 수 없으면 None 반환
+    return None
+
 
 
 ####엑셀 파일 읽어오기
@@ -9,7 +97,7 @@ def ready_to_convert(order_list_pd):
     codes = order_list_pd['상품코드'].astype(str).fillna("").tolist()
 
     #카페24상품코드와 네이버 상품코드를 매핑한 엑셀파일 읽어오기
-    product_code_mapping = pd.read_excel("product_code_mapping.xlsx", engine='openpyxl')
+    product_code_mapping = pd.read_excel(r"resources\product_code_mapping.xlsx", engine='openpyxl')
 
     product_code_mapping['naver_code'] = product_code_mapping['naver_code'].astype(str).str.strip().str.replace('-', '')
     product_code_mapping['kakao_code'] = product_code_mapping['kakao_code'].astype(str).str.strip().str.replace('-', '')
@@ -74,6 +162,3 @@ def report_result(order_list_pd, not_found_files):
         converted_codes_df.to_csv(f"result\\{now}_not_found_files.csv", index=False, encoding='utf-8-sig')
         alert_msg=f"{len(not_found_files)}개의 설명지를 찾지 못했습니다"
         print(alert_msg)
-
-
-
