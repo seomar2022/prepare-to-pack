@@ -26,7 +26,8 @@ split_csv_by_column_index(download_from_cafe24_path, order_list_path, order_list
 
 
 #한진택배리스트 파일
-hanjin_path = r"result\hanjin_original_file.xlsx"
+
+hanjin_path = r"result\hanjin_file.xlsx"
 hanjin_header_list = get_column_from_csv(r"settings\header.csv", "hanjin_header")
 hanjin_header_index = [find_header_index(download_from_cafe24_path, hanjin_header) for hanjin_header in hanjin_header_list]
 split_csv_by_column_index(download_from_cafe24_path, hanjin_path , hanjin_header_index)
@@ -34,6 +35,14 @@ split_csv_by_column_index(download_from_cafe24_path, hanjin_path , hanjin_header
 
 #####################print_out_product_instruction#####################
 order_list_pd = pd.read_excel(r"result\order_list.xlsx", engine='openpyxl')
+
+
+# '중량' 열을 업데이트
+order_list_pd['중량'] = order_list_pd.apply(get_final_weight, axis=1)
+
+# 수정된 내용을 새로운 엑셀 파일로 저장
+order_list_pd.to_excel(r"result\order_list.xlsx", index=False, engine='openpyxl')
+
 converted_codes = ready_to_convert(order_list_pd)
 not_found_files = merge_pdf(converted_codes)
 report_result(order_list_pd, not_found_files)
