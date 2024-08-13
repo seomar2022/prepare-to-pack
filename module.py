@@ -2,6 +2,7 @@ import pandas as pd
 import os
 from datetime import datetime
 import csv
+import xlwings as xw #매크로실행위해
 
 ####설정폴더에서 경로찾기
 def search_path(header_name):
@@ -122,3 +123,34 @@ def split_csv_by_column_index(csv_file_path, excel_file_path, column_indices):
         print(f"CSV 파일을 찾을 수 없습니다: {csv_file_path}")
     except Exception as e:
         print(f"파일을 처리하는 중 오류가 발생했습니다: {e}")
+
+def run_macro(macro_name, excel_path):
+    try:
+        # 엑셀 애플리케이션 시작 및 파일 열기 (빈 통합 문서 생성을 방지)
+        app = xw.App(visible=True, add_book=False)
+        workbook = app.books.open(excel_path)
+        
+        #매크로가 저장된 엑셀 파일 불러옴.
+        #.bas 파일로 저장된 VBA 코드를 실행하려면 Excel의 VBA 프로젝트에 임포트해야함. 
+        macro_wb = app.books.open(r'resources\macro.XLSB')
+        
+        # 주문리스트 파일을 활성화(매크로가 적용될 파일이므로)
+        workbook.activate()
+        
+        # 매크로 실행 (macro_wb에서 호출)
+        macro = macro_wb.macro(macro_name) 
+        macro()
+        
+        #파일 저장 후 닫기
+        workbook.save()
+        workbook.close()
+
+        # macro_wb.xlsb 파일 닫기
+        macro_wb.close()
+
+        # 엑셀 애플리케이션 종료
+        app.quit()
+        print(f"매크로가 성공적으로 실행되었습니다.")
+        
+    except Exception as e:
+        print(f"매크로 실행 중 오류가 발생했습니다: {e}")
