@@ -3,24 +3,13 @@ from datetime import datetime #병합된 pdf이름에 오늘 날짜 쓰기 위�
 import pandas as pd #pip install pandas openpyxl #엑셀의 데이터를 읽어오기 위해.
 import re
 
-####각 상품의 중량 알아내기
-def extract_weight_from_name(product_name):
-    """
-    상품명에서 중량을 추출하는 함수.
-    
-    Args:
-        product_name (str): 상품명
-    
-    Returns:
-        float: 추출된 중량. 중량이 없을 경우 None.
-    """
-    if not isinstance(product_name, str):
+#문자열에서 중량 정보를 추출
+def extract_weight(product_data):
+    if not isinstance(product_data, str):
         return None
+    product_data = product_data.lower().replace('ml', 'g')
     
-    # ml을 g로 간주하여 인식
-    product_name = product_name.lower().replace('ml', 'g')
-    
-    match = re.search(r'(\d+(\.\d+)?)\s*(kg|g)', product_name, re.IGNORECASE)
+    match = re.search(r'(\d+(\.\d+)?)\s*(kg|g)', product_data, re.IGNORECASE)
     
     if match:
         weight = float(match.group(1))
@@ -34,60 +23,24 @@ def extract_weight_from_name(product_name):
     else:
         return None
 
-def extract_weight_from_option(option):
-    """
-    상품옵션에서 중량을 추출하는 함수.
-    
-    Args:
-        option (str): 상품옵션
-    
-    Returns:
-        float: 추출된 중량. 중량이 없을 경우 None.
-    """
-    if not isinstance(option, str):
-        return None
-    
-    # "중량=1.5kg" 또는 "중량=150g" 형식에서 중량을 추출
-    match = re.search(r'중량=(\d+(\.\d+)?)\s*(kg|g)', option, re.IGNORECASE)
-    
-    if match:
-        weight = float(match.group(1))
-        unit = match.group(3).lower()
-        
-        # 단위가 g일 경우 kg으로 변환
-        if unit == 'g':
-            weight = weight / 1000
-        
-        return weight
-    else:
-        return None
-
+#조건에 따라 중량 정보를 선택
 def get_final_weight(row):
-    """
-    중량을 추출하는 함수. 주어진 규칙에 따라 중량 값을 반환합니다.
+    if pd.notna(row['중량']) == False :#중량열에 데이터 없음
+        #->스마트 스토어나 톡스토어 주문건임. 상품명에서 중량 추출해야함.  
+        weight_from_name_column = extract_weight(row['상품명(한국어 쇼핑몰)'])
+        if weight_from_name_column is not None:
+            print(f"상품명에서 중량 사용: {weight_from_name_column}")
+        return weight_from_name_column
     
-    Args:
-        row (pd.Series): 엑셀 파일의 한 행 데이터
-    
-    Returns:
-        float: 중량 값
-    """
-    # 1. 중량 열에 데이터가 있으면 그 값을 사용
-    if pd.notna(row['중량']):
-        return row['중량']
-    
-    # 2. 상품옵션에 중량 데이터가 있고, 그 값이 중량과 다르면 상품옵션의 중량을 사용
-    weight_from_option = extract_weight_from_option(row['상품옵션'])
-    if weight_from_option is not None:
-        return weight_from_option
-    
-    # 3. 상품옵션과 중량에도 데이터가 없으면 상품명에서 중량을 가져옴
-    weight_from_name = extract_weight_from_name(row['상품명(한국어 쇼핑몰)'])
-    if weight_from_name is not None:
-        return weight_from_name
-    
-    # 중량을 찾을 수 없으면 None 반환
-    return None
+    else: #중량열에 데이터 있음
+        #->카페24주문 건임(몇몇 연동된 상품 제외). 상품옵션열의 데이터에 중량 정보기 중량열의 데이터가 다를 때만 상품옵션 데이터 쓰기. 
+        weight_from_option_column = extract_weight(row['상품옵션'])
+        if weight_from_option_column is None: #상품옵션에 중량 정보가 없을경우
+            print(f"중량에서 중량 사용: {weight_from_option_column}")
+            return row['중량']
+        else: #상품옵션에 중량 정보가 있을 경우
+            print(f"상품옵션에서 중량 사용: {weight_from_option_column}")
+            return weight_from_option_column
 
 
 

@@ -48,6 +48,11 @@ def prepare_to_pack():
 
     # 수정된 내용을 새로운 엑셀 파일로 저장
     order_list_pd.to_excel(r"result\order_list.xlsx", index=False, engine='openpyxl')
+    
+    #log
+    log_text.set(log_text.get() + "\n주문리스트의 중량 정보 입력")
+    time.sleep(sleep_time) 
+
 
     converted_codes = ready_to_convert(order_list_pd)
     not_found_files = merge_pdf(converted_codes)
