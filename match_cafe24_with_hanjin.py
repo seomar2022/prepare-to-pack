@@ -63,18 +63,3 @@ output_file = r'result\excel_sample_old.csv'
 
 # 매칭 실행
 match_cafe24_with_hanjin(cafe24_file, hanjin_file, output_file)
-'''
-# 한진택배(출력자료등록_원본_오늘날짜_일련번호) 파일 삭제
-def delete_file(file_path):
-    try:
-        os.remove(file_path)
-        return f"파일이 성공적으로 삭제되었습니다: {file_path}"
-    except FileNotFoundError:
-        return f"파일을 찾을 수 없습니다: {file_path}"
-    except PermissionError:
-        return f"파일 삭제 권한이 없습니다: {file_path}"
-    except Exception as e:
-        return f"파일 삭제 중 오류가 발생했습니다: {e}"
-
-delete_file(hanjin_file)
-'''

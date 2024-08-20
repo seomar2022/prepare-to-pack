@@ -3,6 +3,8 @@ import os
 from datetime import datetime
 import csv
 import xlwings as xw #매크로실행위해
+import tkinter as tk
+import subprocess #GUI
 
 ####설정폴더에서 경로찾기
 def search_path(header_name):
@@ -154,3 +156,42 @@ def run_macro(macro_name, excel_path):
         
     except Exception as e:
         print(f"매크로 실행 중 오류가 발생했습니다: {e}")
+
+def run_python_program(script_path):
+    try:
+        # Python 스크립트 실행
+        subprocess.run(['python', script_path], check=True)
+        print("prepare_to_pack.py 실행 완료.")
+    except Exception as e:
+        print(f"파일 실행 중 오류가 발생했습니다: {e}")
+
+###GUI 툴팁
+class ToolTip:
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip_window = None
+        self.widget.bind("<Enter>", self.show_tooltip)
+        self.widget.bind("<Leave>", self.hide_tooltip)
+
+    def show_tooltip(self, event=None):
+        if self.tooltip_window or not self.text:
+            return
+        x, y, _cx, cy = self.widget.bbox("insert")
+        x += self.widget.winfo_rootx() + 25
+        y += self.widget.winfo_rooty() + cy + 25
+        self.tooltip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)  # 창 프레임 제거
+        tw.wm_geometry(f"+{x}+{y}")
+        tw.attributes('-topmost', True)
+
+        label = tk.Label(tw, text=self.text, justify='left',
+                         relief='solid', borderwidth=1,
+                         font=("Arial", 10, "normal"))
+        label.pack(ipadx=1)
+
+    def hide_tooltip(self, event=None):
+        tw = self.tooltip_window
+        self.tooltip_window = None
+        if tw:
+            tw.destroy()
