@@ -57,15 +57,19 @@ def prepare_to_pack():
     log_text.set(log_text.get() + "\n상품 설명지 병합")
     time.sleep(sleep_time) 
 
-    ####매크로 실행
+    ####매크로 실행(포장할 때 참고할 주문리스트 만들기 위해)
     run_macro("전채널주문리스트", order_list_path)
     #log
     log_text.set(log_text.get() + "\n전채널주문리스트 매크로 실행\n주문리스트 파일 작성")
     time.sleep(sleep_time) 
 
-    ##########################################make_two_files##########################################
-    match_to_cafe24_example(hanjin_path)
-    #매크로 실행(기존 파일을 한진택배 복수내품 양식에 맞게 변경하기 위해)
+    ####카페24 양식에 맞게 수정한 파일 만들기
+    match_to_cafe24_example(hanjin_path)  
+    #log
+    log_text.set(log_text.get() + "\n송장등록을 위한 카페24양식 파일 작성")
+    time.sleep(sleep_time)
+
+    ####매크로 실행(기존 파일을 한진택배 복수내품 양식에 맞게 변경하기 위해)
     run_macro("ProcessMultipleItems", hanjin_path) 
     os.rename(hanjin_path, r"result\upload_to_hanjin.xlsx")
     #log
@@ -82,14 +86,13 @@ def prepare_to_pack():
     log_text.set(log_text.get() + "\n끝! 실행 완료")
     time.sleep(sleep_time)
 
-
 def on_button_click():
     # 별도의 스레드에서 프로그램 로직 실행
     threading.Thread(target=prepare_to_pack).start()
 
-def click_upload_tracking_number_button():
-    run_python_program("match_cafe24_with_hanjin.py")
-    log_text.set("실행 완료")
+def on_upload_tracking_number_button_click():
+    run_python_program("upload_tracking_number.py")
+    log_text.set("실행 완료\n송장번호 열의 셀서식을 숫자로 지정 후, 카페24 엑셀 일괄배송 처리란에 업로드해 주세요.")
 
 ##########################################GUI##########################################
 #.pack()은 부모위젯 안에 배치
@@ -97,7 +100,7 @@ def click_upload_tracking_number_button():
 # 메인 윈도우 생성
 root = tk.Tk()
 root.title("prepare_to_pack")
-root.geometry("350x400")  # 너비x높이
+root.geometry("350x450")  # 너비x높이
 root.configure()
 root.attributes('-topmost', True) # 창이 포커스를 잃어도 항상 다른 창들보다 위에 표시
 
@@ -116,12 +119,10 @@ button_frame = tk.Frame(root)
 button_frame.pack(pady=10)
 
 #버튼 이미지
-prepare_image = tk.PhotoImage(file="resources/img/box.png")
-#https://www.flaticon.com/free-icon/box_679720?term=packing&page=1&position=1&origin=search&related_id=679720
-upload_image = tk.PhotoImage(file="resources/img/order-fulfillment.png")
-#https://www.flaticon.com/free-icon/order-fulfillment_11482468?term=delivery+label&page=1&position=1&origin=search&related_id=11482468
+prepare_image = tk.PhotoImage(file="resources/img/package-box.png")
+upload_image = tk.PhotoImage(file="resources/img/document.png")
 info_image = tk.PhotoImage(file="resources/img/info.png")
-#https://www.flaticon.com/free-icon/information_545674?term=information&page=1&position=2&origin=search&related_id=545674
+
 
 # 포장 준비 버튼
 prepare_button = tk.Button(button_frame, image=prepare_image, command=on_button_click)
@@ -129,14 +130,14 @@ prepare_button.pack(side="left", padx=10)
 ToolTip(prepare_button, "cafe24에서 '출고준비통합'양식으로 파일을 다운로드 받은 후 이 버튼을 클릭해 주세요.")
 
 # 송장 업로드 버튼
-upload_tracking_number_button = tk.Button(button_frame, image=upload_image, command=click_upload_tracking_number_button, font=font_size)
+upload_tracking_number_button = tk.Button(button_frame, image=upload_image, command=on_upload_tracking_number_button_click, font=font_size)
 upload_tracking_number_button.pack(side="right", padx=10)
 ToolTip(upload_tracking_number_button, "한진택배에서 '원본파일'을 다운로드 받은 후 이 버튼을 클릭해 주세요.")
 
 # info 버튼
 info_button = tk.Button(root, image=info_image)
 info_button.pack(side="bottom", pady=20)
-ToolTip(info_button, "cafe24 엑셀파일 다운 양식 수정: \settings\header.csv\n인터넷에서 다운 받은 파일이 있는 폴더 경로 지정:settings\path.csv \n기타문의:seomar2022@gmail.com")
+ToolTip(info_button, "-cafe24 엑셀파일 다운 양식 수정: \settings\header.csv\n-인터넷에서 다운 받은 파일이 있는 폴더 경로 지정:settings\path.csv\n-설명지 추가: \resources\product_instruction\n-image: Flaticon.com\n-기타문의:seomar2022@gmail.com")
 
 
 #### 로그 텍스트를 표시할 라벨 생성
