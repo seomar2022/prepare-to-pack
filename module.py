@@ -30,22 +30,22 @@ def search_path(header_name):
 
 
 ####이름 일부를 검색해서 파일찾기
-def find_file_by_partial_name(directory, partial_name):
-    # 지정된 디렉토리의 파일 목록을 가져옴
-    files = os.listdir(directory)
+def find_path_by_partial_name(directory, partial_name):
+    # 지정된 디렉토리의 파일 및 디렉토리 목록을 가져옴
+    items = os.listdir(directory)
     
-    # 부분 문자열이 파일 이름에 포함된 파일 목록 생성
-    matching_files = [file for file in files if partial_name in file]
+    # 부분 문자열이 파일 또는 디렉토리 이름에 포함된 항목 목록 생성
+    matching_items = [item for item in items if partial_name in item]
     
-    # 매칭된 파일이 없으면 None 반환
-    if not matching_files:
+    # 매칭된 항목이 없으면 None 반환
+    if not matching_items:
         return None
     
-    # 가장 최근에 수정된 파일 찾기
-    most_recent_file = max(matching_files, key=lambda f: os.path.getmtime(os.path.join(directory, f)))
+    # 가장 최근에 수정된 파일 또는 디렉토리 찾기
+    most_recent_item = max(matching_items, key=lambda f: os.path.getmtime(os.path.join(directory, f)))
     
-    # 가장 최근에 수정된 파일의 전체 경로 반환
-    return os.path.join(directory, most_recent_file)
+    # 가장 최근에 수정된 파일 또는 디렉토리의 전체 경로 반환
+    return os.path.join(directory, most_recent_item)
 
 
 ####헤더 이름을 입력하면 몇 열인지 return

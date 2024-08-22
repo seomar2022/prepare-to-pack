@@ -25,7 +25,7 @@ def match_cafe24_with_hanjin(cafe24_file, hanjin_file, output_file):
 # 검색할 파일 이름의 부분 문자열
 partial_name = "출력자료등록_원본_" + datetime.today().strftime('%Y%m%d')  
 # 파일 검색
-file_path = find_file_by_partial_name(search_path("download_from_internet"), partial_name)
+file_path = find_path_by_partial_name(search_path("download_from_internet"), partial_name)
 
 if file_path:
     print(f"파일을 찾았습니다: {file_path}")
@@ -33,9 +33,12 @@ if file_path:
 else:
     print("파일을 찾을 수 없습니다.")
 
+#os.path.dirname(os.path.abspath(__file__) ->현재 실행 중인 스크립트 파일이 위치한 디렉토리 경로
+result_directory = find_path_by_partial_name(os.path.dirname(os.path.abspath(__file__)), "result_")
+print("result_directory:", result_directory)
 # 파일 경로 설정
-cafe24_file = r'result\excel_sample_old.csv'
-output_file = r'result\excel_sample_old.csv'
+cafe24_file = rf'{result_directory}\excel_sample_old.csv'
+output_file = rf'{result_directory}\excel_sample_old.csv'
 
 # 매칭 실행
 match_cafe24_with_hanjin(cafe24_file, hanjin_file, output_file)

@@ -29,17 +29,14 @@ def get_final_weight(row):
         #->스마트 스토어나 톡스토어 주문건임. 상품명에서 중량 추출해야함.  
         weight_from_name_column = extract_weight(row['상품명(한국어 쇼핑몰)'])
         if weight_from_name_column is not None:
-            print(f"상품명에서 중량 사용: {weight_from_name_column}")
-        return weight_from_name_column
+            return weight_from_name_column
     
     else: #중량열에 데이터 있음
         #->카페24주문 건임(몇몇 연동된 상품 제외). 상품옵션열의 데이터에 중량 정보기 중량열의 데이터가 다를 때만 상품옵션 데이터 쓰기. 
         weight_from_option_column = extract_weight(row['상품옵션'])
         if weight_from_option_column is None: #상품옵션에 중량 정보가 없을경우
-            print(f"중량에서 중량 사용: {weight_from_option_column}")
             return row['중량']
         else: #상품옵션에 중량 정보가 있을 경우
-            print(f"상품옵션에서 중량 사용: {weight_from_option_column}")
             return weight_from_option_column
 
 
@@ -77,7 +74,7 @@ def ready_to_convert(order_list_pd):
     return converted_codes
 
 #### PDF 파일 병합
-def merge_pdf(converted_codes):
+def merge_pdf(result_directory, converted_codes):
     merge_pdf = PdfWriter()
     not_found_files = {}
 
@@ -88,15 +85,12 @@ def merge_pdf(converted_codes):
         except FileNotFoundError:
             not_found_files[converted_code] = ''
 
-    # 현재 날짜 가져오기
-    now = datetime.now().strftime("%m.%d.%a") #월.일.요일
-
-    merge_pdf.write(f"result\\{now}_product_instruction.pdf")
+    merge_pdf.write(f"{result_directory}\\product_instruction.pdf")
     merge_pdf.close()
     return not_found_files
 
 ####설명지 없는 상품코드와 상품명 알려주기
-def report_result(order_list_pd, not_found_files):
+def report_result(result_directory, order_list_pd, not_found_files):
     #설명지 없는 상품의 코드를 전채널주문리스트에서 찾고, 해당 상품의 이름을 가져와서 딕셔너리의 값으로 넣기
     #매크로 돌리기 전의 열이름은 '상품명(한국어 쇼핑몰)' 돌린 후는 '상품명'이라서 상품명이 포함된 열을 지정
     product_name_col = [col for col in order_list_pd.columns if "상품명" in col]
@@ -110,13 +104,12 @@ def report_result(order_list_pd, not_found_files):
         alert_msg = "모든 상품의 설명지를 찾았습니다!"
     else:
         #csv파일로 저장
-        now = datetime.now().strftime("%m.%d.%a") #월.일.요일
         converted_codes_df = pd.DataFrame(list(not_found_files.items()), columns=['상품코드', '상품명'])
-        converted_codes_df.to_csv(f"result\\{now}_not_found_files.csv", index=False, encoding='utf-8-sig')
+        converted_codes_df.to_csv(f"{result_directory}\\not_found_files.csv", index=False, encoding='utf-8-sig')
         alert_msg=f"{len(not_found_files)}개의 설명지를 찾지 못했습니다"
         print(alert_msg)
 
-def match_to_cafe24_example(hanjin_path):
+def match_to_cafe24_example(result_directory, hanjin_path):
     ####배송리스트 파일 읽어오기
     delivery_list = pd.read_excel(hanjin_path, engine='openpyxl')
 
@@ -126,7 +119,7 @@ def match_to_cafe24_example(hanjin_path):
         upload_to_cafe24 = delivery_list.iloc[:, :2]
 
         # 수정된 내용을 새로운 CSV 파일로 저장
-        upload_to_cafe24.to_csv(r"result\excel_sample_old.csv", index=False, encoding='utf-8-sig')
+        upload_to_cafe24.to_csv(rf"{result_directory}\excel_sample_old.csv", index=False, encoding='utf-8-sig')
     
     except Exception as e:
         print(f"파일 편집 중 오류가 발생했습니다: {e}")
