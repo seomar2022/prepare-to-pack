@@ -157,13 +157,20 @@ def run_macro(macro_name, excel_path):
     except Exception as e:
         print(f"매크로 실행 중 오류가 발생했습니다: {e}")
 
-def run_python_program(script_path):
+def run_python_program(script_name):
     try:
-        # Python 스크립트 실행
-        subprocess.run(['python', script_path], check=True)
-        print("prepare_to_pack.py 실행 완료.")
-    except Exception as e:
-        print(f"파일 실행 중 오류가 발생했습니다: {e}")
+        # subprocess를 사용하여 Python 스크립트 실행
+        result = subprocess.run(
+            ["python", script_name], 
+            check=True,  # 오류가 발생하면 예외를 발생시킴
+            capture_output=True,  # 표준 출력 및 표준 오류 캡처
+            text=True  # 출력 결과를 텍스트로 처리
+        )
+        return result.stdout  # 표준 출력을 반환
+    except subprocess.CalledProcessError as e:
+        # 오류가 발생한 경우 표준 오류를 반환
+        return f"오류 발생: {e.stderr}"
+
 
 ###GUI 툴팁
 class ToolTip:

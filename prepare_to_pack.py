@@ -98,12 +98,14 @@ def on_button_click():
     threading.Thread(target=prepare_to_pack).start()
 
 def on_upload_tracking_number_button_click():
+    result = run_python_program("upload_tracking_number.py")
+    
+    # 실행 완료 여부 판단
+    if "오류 발생" in result:
+        log_text.set(result)  # 오류 메시지를 로그에 출력
+    else:
+        log_text.set("실행 완료\n카페24 엑셀 일괄배송 처리란에 업로드해 주세요.")
 
-    try:
-        run_python_program("upload_tracking_number.py")
-        log_text.set("실행 완료\n송장번호 열의 셀서식을 숫자로 지정 후, 카페24 엑셀 일괄배송 처리란에 업로드해 주세요.")
-    except Exception as e:
-        log_text.set(f"오류 발생: {e}") 
 
 ##########################################GUI##########################################
 #.pack()은 부모위젯 안에 배치
@@ -149,7 +151,7 @@ ToolTip(upload_tracking_number_button, "한진택배에서 '원본파일'을 다
 # info 버튼
 info_button = tk.Button(root, image=info_image)
 info_button.pack(side="bottom", pady=20)
-ToolTip(info_button, "-cafe24 엑셀파일 다운 양식 수정: \settings\header.csv\n-인터넷에서 다운 받은 파일이 있는 폴더 경로 지정:settings\path.csv\n-설명지 추가: \resources\product_instruction\n-image: Flaticon.com\n-기타문의:seomar2022@gmail.com")
+ToolTip(info_button, "-cafe24 엑셀파일 다운 양식 수정: \settings\header.csv\n-인터넷에서 다운 받은 파일이 있는 폴더 경로 지정: \settings\path.csv\n-설명지 추가: \\resources\product_instruction\n-image: Flaticon.com\n-기타문의:seomar2022@gmail.com")
 
 
 #### 로그 텍스트를 표시할 라벨 생성
