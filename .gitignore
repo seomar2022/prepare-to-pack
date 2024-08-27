@@ -2,4 +2,5 @@ product_code_mapping.xlsx
 resources/product_instruction/
 result/
 result_*/
-
+dist/
+build/

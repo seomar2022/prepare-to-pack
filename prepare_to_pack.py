@@ -1,5 +1,6 @@
 from module import *
 from print_out_product_instruction import *
+from upload_tracking_number import upload_tracking_number
 import os
 import webbrowser
 import tkinter as tk #GUI
@@ -98,14 +99,11 @@ def on_button_click():
     threading.Thread(target=prepare_to_pack).start()
 
 def on_upload_tracking_number_button_click():
-    result = run_python_program("upload_tracking_number.py")
-    
-    # 실행 완료 여부 판단
-    if "오류 발생" in result:
-        log_text.set(result)  # 오류 메시지를 로그에 출력
-    else:
+    try:
+        upload_tracking_number()
         log_text.set("실행 완료\n카페24 엑셀 일괄배송 처리란에 업로드해 주세요.")
-
+    except Exception as e:
+        log_text.set(f"\n오류 발생: {e}") 
 
 ##########################################GUI##########################################
 #.pack()은 부모위젯 안에 배치
@@ -124,7 +122,7 @@ font_size = 14
 frame = tk.Frame(root, padx=20, pady=20)
 frame.pack()
 
-label = tk.Label(root, text="출고준비 프로그램", font=("none", font_size, "bold"))
+label = tk.Label(root, text="출고 준비 프로그램", font=("none", font_size, "bold"))
 label.pack(pady=10)  # 여백 설정  # 위젯을 창에 배치
 
 ####버튼

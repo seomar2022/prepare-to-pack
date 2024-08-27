@@ -1,5 +1,4 @@
 from pypdf import PdfWriter #pip install pypdf #pdf병합기능 쓰기 위해.
-from datetime import datetime #병합된 pdf이름에 오늘 날짜 쓰기 위해.
 import pandas as pd #pip install pandas openpyxl #엑셀의 데이터를 읽어오기 위해.
 import re
 
