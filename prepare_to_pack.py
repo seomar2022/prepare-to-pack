@@ -1,11 +1,12 @@
 from module import *
-from print_out_product_instruction import *
+from before_packing import *
 from upload_tracking_number import upload_tracking_number
 import os
 import webbrowser
 import tkinter as tk #GUI
 import threading #GUI 멀티스레드 사용하기 위해
 import time #GUI에서 멀티스레드 사용하기 위해
+from datetime import datetime #폴더이름에 현재 날짜 넣기 위해
 
 def prepare_to_pack():
     try:
@@ -94,7 +95,7 @@ def prepare_to_pack():
     except Exception as e:
         log_text.set(log_text.get() + f"\n오류 발생: {e}") 
 
-def on_button_click():
+def on_before_packing_button_click():
     # 별도의 스레드에서 프로그램 로직 실행
     threading.Thread(target=prepare_to_pack).start()
 
@@ -103,7 +104,7 @@ def on_upload_tracking_number_button_click():
         upload_tracking_number()
         log_text.set("실행 완료\n카페24 엑셀 일괄배송 처리란에 업로드해 주세요.")
     except Exception as e:
-        log_text.set(f"\n오류 발생: {e}") 
+        log_text.set(f"오류 발생: {e}") 
 
 ##########################################GUI##########################################
 #.pack()은 부모위젯 안에 배치
@@ -131,15 +132,14 @@ button_frame = tk.Frame(root)
 button_frame.pack(pady=10)
 
 #버튼 이미지
-prepare_image = tk.PhotoImage(file="resources/img/package-box.png")
+before_packing_image = tk.PhotoImage(file="resources/img/package-box.png")
 upload_image = tk.PhotoImage(file="resources/img/document.png")
 info_image = tk.PhotoImage(file="resources/img/info.png")
 
-
 # 포장 준비 버튼
-prepare_button = tk.Button(button_frame, image=prepare_image, command=on_button_click)
-prepare_button.pack(side="left", padx=10)
-ToolTip(prepare_button, "cafe24에서 '출고준비통합'양식으로 파일을 다운로드 받은 후 이 버튼을 클릭해 주세요.")
+before_packing_button = tk.Button(button_frame, image=before_packing_image, command=on_before_packing_button_click)
+before_packing_button.pack(side="left", padx=10)
+ToolTip(before_packing_button, "cafe24에서 '출고준비통합'양식으로 파일을 다운로드 받은 후 이 버튼을 클릭해 주세요.")
 
 # 송장 업로드 버튼
 upload_tracking_number_button = tk.Button(button_frame, image=upload_image, command=on_upload_tracking_number_button_click, font=font_size)
@@ -162,4 +162,4 @@ log_label.pack(pady=10, padx=20)
 # 메인 루프 시작
 root.mainloop()
 
-#pyinstaller --onefile print_out_product_instruction.py
+#pyinstaller --onefile --noconsole prepare_to_pack.py
