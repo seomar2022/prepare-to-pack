@@ -1,17 +1,14 @@
-import sys
 import pandas as pd
 import os
-from datetime import datetime
 import csv
 import xlwings as xw #매크로실행위해
 import tkinter as tk
-import subprocess #GUI
 
 ####설정폴더에서 경로찾기
 def search_path(header_name):
     try:
         # CSV 파일 열기
-        with open("settings\path.csv", mode='r', encoding='utf-8') as file:
+        with open("settings\\path.csv", mode='r', encoding='utf-8-sig') as file:
             reader = csv.reader(file)
             
             # 데이터 검색
