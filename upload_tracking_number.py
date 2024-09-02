@@ -1,6 +1,8 @@
 import pandas as pd
 from datetime import datetime
 from module import *
+import sys
+
 def match_cafe24_with_hanjin(cafe24_file, hanjin_file, output_file):
         # 카페24 주문 데이터 불러오기
         cafe24_data = pd.read_csv(cafe24_file, encoding='utf-8')
