@@ -4,3 +4,5 @@ result/
 result_*/
 dist/
 build/
+__pycache__/
+.venv/
