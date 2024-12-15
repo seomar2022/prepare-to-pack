@@ -110,56 +110,57 @@ def on_upload_tracking_number_button_click():
 #.pack()은 부모위젯 안에 배치
 
 # 메인 윈도우 생성
-root = tk.Tk()
-root.title("prepare_to_pack")
-root.geometry("350x450")  # 너비x높이
-root.configure()
-root.attributes('-topmost', True) # 창이 포커스를 잃어도 항상 다른 창들보다 위에 표시
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.title("prepare_to_pack")
+    root.geometry("350x450")  # 너비x높이
+    root.configure()
+    root.attributes('-topmost', True) # 창이 포커스를 잃어도 항상 다른 창들보다 위에 표시
 
 
-font_size = 14
+    font_size = 14
 
-# 프레임을 사용하여 내부 여백 추가
-frame = tk.Frame(root, padx=20, pady=20)
-frame.pack()
+    # 프레임을 사용하여 내부 여백 추가
+    frame = tk.Frame(root, padx=20, pady=20)
+    frame.pack()
 
-label = tk.Label(root, text="출고 준비 프로그램", font=("none", font_size, "bold"))
-label.pack(pady=10)  # 여백 설정  # 위젯을 창에 배치
+    label = tk.Label(root, text="출고 준비 프로그램", font=("none", font_size, "bold"))
+    label.pack(pady=10)  # 여백 설정  # 위젯을 창에 배치
 
-####버튼
-# 버튼 프레임 생성
-button_frame = tk.Frame(root)
-button_frame.pack(pady=10)
+    ####버튼
+    # 버튼 프레임 생성
+    button_frame = tk.Frame(root)
+    button_frame.pack(pady=10)
 
-#버튼 이미지
-before_packing_image = tk.PhotoImage(file="resources/img/package-box.png")
-upload_image = tk.PhotoImage(file="resources/img/document.png")
-info_image = tk.PhotoImage(file="resources/img/info.png")
+    #버튼 이미지
+    before_packing_image = tk.PhotoImage(file="resources/img/package-box.png")
+    upload_image = tk.PhotoImage(file="resources/img/document.png")
+    info_image = tk.PhotoImage(file="resources/img/info.png")
 
-# 포장 준비 버튼
-before_packing_button = tk.Button(button_frame, image=before_packing_image, command=on_before_packing_button_click)
-before_packing_button.pack(side="left", padx=10)
-ToolTip(before_packing_button, "cafe24에서 '출고준비통합'양식으로 파일을 다운로드 받은 후 이 버튼을 클릭해 주세요.")
+    # 포장 준비 버튼
+    before_packing_button = tk.Button(button_frame, image=before_packing_image, command=on_before_packing_button_click)
+    before_packing_button.pack(side="left", padx=10)
+    ToolTip(before_packing_button, "cafe24에서 '출고준비통합'양식으로 파일을 다운로드 받은 후 이 버튼을 클릭해 주세요.")
 
-# 송장 업로드 버튼
-upload_tracking_number_button = tk.Button(button_frame, image=upload_image, command=on_upload_tracking_number_button_click, font=font_size)
-upload_tracking_number_button.pack(side="right", padx=10)
-ToolTip(upload_tracking_number_button, "한진택배에서 '원본파일'을 다운로드 받은 후 이 버튼을 클릭해 주세요.")
+    # 송장 업로드 버튼
+    upload_tracking_number_button = tk.Button(button_frame, image=upload_image, command=on_upload_tracking_number_button_click, font=font_size)
+    upload_tracking_number_button.pack(side="right", padx=10)
+    ToolTip(upload_tracking_number_button, "한진택배에서 '원본파일'을 다운로드 받은 후 이 버튼을 클릭해 주세요.")
 
-# info 버튼
-info_button = tk.Button(root, image=info_image)
-info_button.pack(side="bottom", pady=20)
-ToolTip(info_button, "-cafe24 엑셀파일 다운 양식 수정: \settings\header.csv\n-인터넷에서 다운 받은 파일이 있는 폴더 경로 지정: \settings\path.csv\n-설명지 추가: \\resources\product_instruction\n-image: Flaticon.com\n-기타문의:seomar2022@gmail.com")
+    # info 버튼
+    info_button = tk.Button(root, image=info_image)
+    info_button.pack(side="bottom", pady=20)
+    ToolTip(info_button, "-cafe24 엑셀파일 다운 양식 수정: \settings\header.csv\n-인터넷에서 다운 받은 파일이 있는 폴더 경로 지정: \settings\path.csv\n-설명지 추가: \\resources\product_instruction\n-image: Flaticon.com\n-기타문의:seomar2022@gmail.com")
 
 
-#### 로그 텍스트를 표시할 라벨 생성
-log_text = tk.StringVar()
-log_text.set("")
+    #### 로그 텍스트를 표시할 라벨 생성
+    log_text = tk.StringVar()
+    log_text.set("")
 
-log_label = tk.Label(root, textvariable=log_text, justify="left", anchor="nw", font=font_size, wraplength=300)
-log_label.pack(pady=10, padx=20)
+    log_label = tk.Label(root, textvariable=log_text, justify="left", anchor="nw", font=font_size, wraplength=300)
+    log_label.pack(pady=10, padx=20)
 
-# 메인 루프 시작
-root.mainloop()
+    # 메인 루프 시작
+    root.mainloop()
 
-#pyinstaller --onefile --noconsole prepare_to_pack.py
+    #pyinstaller --onefile --noconsole prepare_to_pack.py
