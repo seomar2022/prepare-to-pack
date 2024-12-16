@@ -3,11 +3,9 @@ from before_packing import *
 from upload_tracking_number import upload_tracking_number
 import os
 import webbrowser
-import tkinter as tk #GUI
-import threading #GUI 멀티스레드 사용하기 위해
 import time #GUI에서 멀티스레드 사용하기 위해
 from datetime import datetime #폴더이름에 현재 날짜 넣기 위해
-from gui import GUI
+
 
 def prepare_to_pack(log_set_callback, log_get_callback):
     try:
@@ -97,9 +95,6 @@ def prepare_to_pack(log_set_callback, log_get_callback):
     except Exception as e:
         log_set_callback(log_get_callback() + f"\n오류 발생: {e}") 
 
-# def on_before_packing_button_click():
-#     # 별도의 스레드에서 프로그램 로직 실행
-#     threading.Thread(target=prepare_to_pack).start()
 
 def on_upload_tracking_number_button_click(log_set_callback):
     try:
@@ -107,19 +102,3 @@ def on_upload_tracking_number_button_click(log_set_callback):
         log_set_callback("실행 완료\n카페24 엑셀 일괄배송 처리란에 업로드해 주세요.")
     except Exception as e:
         log_set_callback(f"오류 발생: {e}") 
-
-##########################################GUI##########################################
-#.pack()은 부모위젯 안에 배치
-
-# 메인 윈도우 생성
-if __name__ == "__main__":
-    import tkinter as tk  
-
-    root = tk.Tk()
-    
-    gui = GUI(root, prepare_to_pack, on_upload_tracking_number_button_click)
-
-    # 메인 루프 시작
-    root.mainloop()
-
-    #pyinstaller --onefile --noconsole prepare_to_pack.py
