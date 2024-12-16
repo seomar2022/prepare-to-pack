@@ -96,9 +96,9 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         log_set_callback(log_get_callback() + f"\n오류 발생: {e}") 
 
 
-def on_upload_tracking_number_button_click(log_set_callback):
-    try:
-        upload_tracking_number()
-        log_set_callback("실행 완료\n카페24 엑셀 일괄배송 처리란에 업로드해 주세요.")
-    except Exception as e:
-        log_set_callback(f"오류 발생: {e}") 
+# def on_upload_tracking_number_button_click(log_set_callback):
+#     try:
+#         upload_tracking_number()
+#         log_set_callback("실행 완료\n카페24 엑셀 일괄배송 처리란에 업로드해 주세요.")
+#     except Exception as e:
+#         log_set_callback(f"오류 발생: {e}") 

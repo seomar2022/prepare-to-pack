@@ -49,7 +49,7 @@ class GUI:
 
 
         # 송장 업로드 버튼
-        upload_tracking_number_button = tk.Button(button_frame, image=upload_image, command=lambda: threading.Thread(target=self.on_upload_tracking, args=(self.update_log)).start())
+        upload_tracking_number_button = tk.Button(button_frame, image=upload_image, command=lambda: threading.Thread(target=self.on_upload_tracking, args=(self.update_log, )).start())
         upload_tracking_number_button.image = upload_image
         upload_tracking_number_button.pack(side="right", padx=10)
         ToolTip(upload_tracking_number_button, "한진택배에서 '원본파일'을 다운로드 받은 후 이 버튼을 클릭해 주세요.")
@@ -70,8 +70,4 @@ class GUI:
         self.log_text.set(message)
     def get_log(self):
         return self.log_text.get()
-    
 
-    # def on_before_packing_button_click():
-    # # 별도의 스레드에서 프로그램 로직 실행
-    #     threading.Thread(target=prepare_to_pack, daemon=True).start()
