@@ -41,20 +41,21 @@ class GUI:
 
 
         # 포장 준비 버튼
-        before_packing_button = tk.Button(button_frame, image=before_packing_image, command=lambda: threading.Thread(target=self.on_before_packing(self.update_log, self.get_log)).start())
+      # before_packing_button = tk.Button(button_frame, image=before_packing_image, command=on_before_packing_button_click)
+        before_packing_button = tk.Button(button_frame, image=before_packing_image, command=lambda: threading.Thread(target=self.on_before_packing, args=(self.update_log, self.get_log)).start())
         before_packing_button.image = before_packing_image
         before_packing_button.pack(side="left", padx=10)
         ToolTip(before_packing_button, "cafe24에서 '출고준비통합'양식으로 파일을 다운로드 받은 후 이 버튼을 클릭해 주세요.")
 
 
         # 송장 업로드 버튼
-        upload_tracking_number_button = tk.Button(button_frame, image=upload_image, command=lambda: threading.Thread(target=self.on_upload_tracking(self.update_log)).start())
+        upload_tracking_number_button = tk.Button(button_frame, image=upload_image, command=lambda: threading.Thread(target=self.on_upload_tracking, args=(self.update_log)).start())
         upload_tracking_number_button.image = upload_image
         upload_tracking_number_button.pack(side="right", padx=10)
         ToolTip(upload_tracking_number_button, "한진택배에서 '원본파일'을 다운로드 받은 후 이 버튼을 클릭해 주세요.")
-
         # info 버튼
         info_button = tk.Button(self.root, image=info_image)
+        info_button.image = info_image
         info_button.pack(side="bottom", pady=20)
         ToolTip(info_button, "-cafe24 엑셀파일 다운 양식 수정: settings\\header.csv\n-인터넷에서 다운 받은 파일이 있는 폴더 경로 지정: settings\\path.csv\n-설명지 추가: \\resources\\product_instruction\n-image: Flaticon.com\n-기타문의:seomar2022@gmail.com")
 
@@ -69,3 +70,8 @@ class GUI:
         self.log_text.set(message)
     def get_log(self):
         return self.log_text.get()
+    
+
+    # def on_before_packing_button_click():
+    # # 별도의 스레드에서 프로그램 로직 실행
+    #     threading.Thread(target=prepare_to_pack, daemon=True).start()

@@ -116,7 +116,7 @@ if __name__ == "__main__":
     import tkinter as tk  
 
     root = tk.Tk()
-
+    
     gui = GUI(root, prepare_to_pack, on_upload_tracking_number_button_click)
 
     # 메인 루프 시작
