@@ -1,6 +1,6 @@
 import pandas as pd
 from datetime import datetime
-from module import *
+from .module import *
 import sys
 
 def match_cafe24_with_hanjin(cafe24_file, hanjin_file, output_file):

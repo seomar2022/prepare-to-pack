@@ -2,7 +2,7 @@
 import tkinter as tk
 from tkinter import PhotoImage, StringVar
 import threading
-from module import *
+from logic.module import *
 
 class GUI:
     def __init__(self, root, on_before_packing, on_upload_tracking):

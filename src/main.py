@@ -1,6 +1,6 @@
 from gui import GUI
-from prepare_to_pack import *
-from upload_tracking_number import *
+from logic.prepare_to_pack import *
+from logic.upload_tracking_number import *
 
 # 메인 윈도우 생성
 if __name__ == "__main__":
