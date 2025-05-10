@@ -40,69 +40,75 @@ def get_final_weight(row):
 
 
 
-####엑셀 파일 읽어오기
-def ready_to_convert(order_list_pd): 
-    # 상품코드 열의 데이터를 문자열로 변환하고 NaN 값을 빈 문자열로 대체
-    codes = order_list_pd['상품코드'].astype(str).fillna("").tolist()
+def convert_to_cafe24_product_code(order_list_pd): 
+    ### Clean product code data for mapping
+    # Convert values in the 상품코드(product code) column to strings and replace NaN with empty strings
+    raw_product_codes = order_list_pd['상품코드'].astype(str).fillna("").tolist()
 
-    #카페24상품코드와 네이버 상품코드를 매핑한 엑셀파일 읽어오기
-    product_code_mapping = pd.read_excel(r"resources\product_code_mapping.xlsx", engine='openpyxl')
+    # Load and clean product code mappings for Cafe24, Naver, and Kakao
+    df_product_code_mapping = pd.read_excel(r"resources\product_code_mapping.xlsx", engine='openpyxl')
 
-    product_code_mapping['naver_code'] = product_code_mapping['naver_code'].astype(str).str.strip().str.replace('-', '')
-    product_code_mapping['kakao_code'] = product_code_mapping['kakao_code'].astype(str).str.strip().str.replace('-', '')
-    product_code_mapping['cafe24_code'] = product_code_mapping['cafe24_code'].astype(str).str.strip()
-    
-    ####상품코드를 카페24의 코드로 통일
+    df_product_code_mapping['naver_code'] = df_product_code_mapping['naver_code'].astype(str).str.strip().str.replace('-', '')
+    df_product_code_mapping['kakao_code'] = df_product_code_mapping['kakao_code'].astype(str).str.strip().str.replace('-', '')
+    df_product_code_mapping['cafe24_code'] = df_product_code_mapping['cafe24_code'].astype(str).str.strip()
+
+    ### Convert
     def convert_to_cafe24(code, column):
-        # 'column' 열에 'code'가 있는 행 ex) naver_code열에서 9708250509가 있는 행
-        result = product_code_mapping.query(f"{column} == @code")
-        return result['cafe24_code'].iat[0]
+        # Row where 'code' exists in the specified 'column' (e.g., 9708250509 in the 'naver_code' column)
+        matched_row = df_product_code_mapping.query(f"{column} == @code")
+        return matched_row['cafe24_code'].iat[0]
+        
+    # prefixes of the codes
+    prefix_to_column = {
+        "P00": None,           # cafe24. No need to convert.
+        "9": "naver_code",
+        "1": "naver_code",
+        "3": "kakao_code",
+    }
 
-    converted_codes = []
-    for code in codes:
-        if code.startswith("P00") : #카페24
-            converted_codes.append(code)
-        elif code.startswith("9") or code.startswith("1") : #네이버
-            #상품코드 맵핑된 엑셀파일에서 네이버 상품코드에 해당하는 카페24상품코드 가져오기
-            result = convert_to_cafe24(code, "naver_code")
-            converted_codes.append(result)
-        elif code.startswith("3") : #카카오
-            result = convert_to_cafe24(code, "kakao_code")
-            converted_codes.append(result)
-            
-    return converted_codes
+    converted_cafe24_codes = []
 
-#### PDF 파일 병합
-def merge_pdf(result_directory, converted_codes):
+    for raw_product_code in raw_product_codes:
+        for prefix, column in prefix_to_column.items():
+            if raw_product_code.startswith(prefix):
+                if column is None:
+                    converted_cafe24_codes.append(raw_product_code)
+                else:
+                    mapped = convert_to_cafe24(raw_product_code, column)
+                    converted_cafe24_codes.append(mapped)
+                break 
+
+    return converted_cafe24_codes
+
+
+
+def merge_product_instructions(output_folder, converted_codes):
     merge_pdf = PdfWriter()
     not_found_files = {}
 
-    #convert된 코드에 해당하는 설명지를 찾아 append
+    # Append the instruction sheet corresponding to each converted code 
     for converted_code in converted_codes:
         try:
             merge_pdf.append(f"resources\\product_instruction\\{converted_code}.pdf")
         except FileNotFoundError:
             not_found_files[converted_code] = ''
 
-    merge_pdf.write(f"{result_directory}\\product_instruction.pdf")
+    merge_pdf.write(f"{output_folder}\\product_instruction.pdf")
     merge_pdf.close()
     return not_found_files
 
-####설명지 없는 상품코드와 상품명 알려주기
-def report_result(result_directory, order_list_pd, not_found_files):
-    #설명지 없는 상품의 코드를 전채널주문리스트에서 찾고, 해당 상품의 이름을 가져와서 딕셔너리의 값으로 넣기
-    #매크로 돌리기 전의 열이름은 '상품명(한국어 쇼핑몰)' 돌린 후는 '상품명'이라서 상품명이 포함된 열을 지정
-    product_name_col = [col for col in order_list_pd.columns if "상품명" in col]
+#### Report product codes and names for which no instruction sheet was found
+def report_missing_instructions(result_directory, order_list_pd, not_found_files):
+    # Find product codes without instruction sheets in order_list_pd, and get the corresponding product names to use as values in the dictionary
+    product_name_col = [col for col in order_list_pd.columns if "상품명(한국어 쇼핑몰)" in col]
     for key in not_found_files:
         key_in_order_list = order_list_pd.query(f"상품코드 == @key")
         not_found_files[key] = key_in_order_list[product_name_col[0]].iat[0]
         
-    
-    ####pyautogui로 프로그램 실행 결과 알려주기
+    # Save product codes without instruction sheets to CSV and show summary message
     if len(not_found_files) == 0:
         alert_msg = "모든 상품의 설명지를 찾았습니다!"
     else:
-        #csv파일로 저장
         converted_codes_df = pd.DataFrame(list(not_found_files.items()), columns=['상품코드', '상품명'])
         converted_codes_df.to_csv(f"{result_directory}\\not_found_files.csv", index=False, encoding='utf-8-sig')
         alert_msg=f"{len(not_found_files)}개의 설명지를 찾지 못했습니다"

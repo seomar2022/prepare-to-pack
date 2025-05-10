@@ -13,8 +13,8 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         log_set_callback("🍰🍰🍰시작! 프로그램 실행🍰🍰🍰")
 
         ####완성된 파일들을 넣어둘 폴더 만들기
-        result_directory = "result_" + datetime.now().strftime("%a.%H.%M.%S") #요일.시.분.초
-        os.makedirs(result_directory)
+        output_folder = "result_" + datetime.now().strftime("%a.%H.%M.%S") #요일.시.분.초
+        os.makedirs(output_folder)
 
         ########################################## Split file from download folder ##########################################
         # Get the folder path from setting\path.csv where the raw file is located
@@ -31,19 +31,28 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         #### Split into two files
         # Order list file
-        order_list_path = rf"{result_directory}\order_list.xlsx"
+        order_list_path = rf"{output_folder}\order_list.xlsx"
         order_list_header_list = get_column_from_csv(r"settings\header.csv", "order_list_header")
         df_order_list = df_raw_data[order_list_header_list]
         # df_order_list.to_excel(order_list_path, index=False)
 
         # Hanjin file
-        hanjin_path = rf"{result_directory}\hanjin_file.xlsx"
+        hanjin_path = rf"{output_folder}\hanjin_file.xlsx"
         hanjin_header_list = get_column_from_csv(r"settings\header.csv", "hanjin_header")
         df_hanjin_list = df_raw_data[hanjin_header_list]
         df_hanjin_list.to_excel(hanjin_path, index=False)
        
         # log
         log_set_callback(log_get_callback() + "\n헤더명에 따라 두 개의 파일로 분리")
+        time.sleep(sleep_time) 
+
+        ########################################## Print out product instruction ##########################################
+        converted_cafe24_codes = convert_to_cafe24_product_code(df_order_list)
+        not_found_files = merge_product_instructions(output_folder, converted_cafe24_codes)
+        report_missing_instructions(output_folder, df_order_list, not_found_files)
+        
+        # log
+        log_set_callback(log_get_callback() + "\n상품 설명지 병합")
         time.sleep(sleep_time) 
 
         ########################################## Data Transformation ##########################################
@@ -55,15 +64,6 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         log_set_callback(log_get_callback() + "\n주문리스트의 중량 정보 입력")
         time.sleep(sleep_time) 
 
-        #### Print out product instruction
-        converted_codes = ready_to_convert(df_order_list)
-        not_found_files = merge_pdf(result_directory, converted_codes)
-        report_result(result_directory, df_order_list, not_found_files)
-        
-        # log
-        log_set_callback(log_get_callback() + "\n상품 설명지 병합")
-        time.sleep(sleep_time) 
-
         ####매크로 실행(포장할 때 참고할 주문리스트 만들기 위해)
         run_macro("전채널주문리스트", order_list_path)
         # log
@@ -71,14 +71,14 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         time.sleep(sleep_time) 
 
         ####카페24 양식에 맞게 수정한 파일 만들기
-        match_to_cafe24_example(result_directory, hanjin_path)  
+        match_to_cafe24_example(output_folder, hanjin_path)  
         # log
         log_set_callback(log_get_callback() + "\n송장등록을 위한 카페24양식 파일 작성")
         time.sleep(sleep_time)
 
         ####매크로 실행(기존 파일을 한진택배 복수내품 양식에 맞게 변경하기 위해)
         run_macro("ProcessMultipleItems", hanjin_path) 
-        os.rename(hanjin_path, rf"{result_directory}\upload_to_hanjin.xlsx")
+        os.rename(hanjin_path, rf"{output_folder}\upload_to_hanjin.xlsx")
         # log
         log_set_callback(log_get_callback() + "\nProcessMultipleItems 매크로 실행\n한진 사이트에 올릴 파일 작성")
         time.sleep(sleep_time)
@@ -87,7 +87,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         webbrowser.open("https://focus.hanjin.com/login")
 
         ####result 폴더 열기
-        os.startfile(f"{result_directory}")
+        os.startfile(f"{output_folder}")
         print("실행 완료.")
         # log
         log_set_callback(log_get_callback() + "\n🍰🍰🍰끝! 실행 완료🍰🍰🍰")
