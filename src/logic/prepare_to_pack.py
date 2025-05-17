@@ -1,6 +1,18 @@
-from .module import *
-from .before_packing import *
-from .upload_tracking_number import upload_tracking_number
+from .module import (
+    search_path,
+    find_path_by_partial_name,
+    get_column_from_csv,
+    run_macro,
+)
+from .before_packing import (
+    get_final_weight,
+    convert_to_cafe24_product_code,
+    merge_product_instructions,
+    report_missing_instructions,
+    assign_gift,
+    match_to_cafe24_example,
+)
+import pandas as pd
 import os
 import webbrowser
 import time  # GUI에서 멀티스레드 사용하기 위해
@@ -42,7 +54,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         ### Split into two files
         # Order list file
-        order_list_path = rf"{output_folder}\order_list.xlsx"
+        # order_list_path = rf"{output_folder}\order_list.xlsx"
         order_list_header_list = get_column_from_csv(
             r"settings\header.csv", "order_list_header"
         )

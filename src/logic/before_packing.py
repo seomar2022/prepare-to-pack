@@ -26,7 +26,7 @@ def extract_weight(product_data):
 
 # 조건에 따라 중량 정보를 선택
 def get_final_weight(row):
-    if pd.notna(row["weight"]) == False:  # 중량열에 데이터 없음
+    if not pd.notna(row["weight"]):  # 중량열에 데이터 없음
         # ->스마트 스토어나 톡스토어 주문건임. 상품명에서 중량 추출해야함.
         weight_from_name_column = extract_weight(row["product_name"])
         if weight_from_name_column is not None:

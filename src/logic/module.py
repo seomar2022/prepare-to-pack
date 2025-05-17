@@ -20,7 +20,7 @@ def search_path(header_name):
             return ""
                 
     except FileNotFoundError:
-        print(f"설정 파일을 찾을 수 없습니다")
+        print("설정 파일을 찾을 수 없습니다")
         return ""
     except Exception as e:
         print(f"설정 파일을 읽는 중 오류가 발생했습니다: {e}")
@@ -150,7 +150,7 @@ def run_macro(macro_name, excel_path):
 
         # 엑셀 애플리케이션 종료
         app.quit()
-        print(f"매크로가 성공적으로 실행되었습니다.")
+        print("매크로가 성공적으로 실행되었습니다.")
         
     except Exception as e:
         print(f"매크로 실행 중 오류가 발생했습니다: {e}")
