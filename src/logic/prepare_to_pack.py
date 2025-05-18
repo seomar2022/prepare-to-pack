@@ -5,12 +5,12 @@ from .module import (
     run_macro,
 )
 from .before_packing import (
-    get_final_weight,
+    get_adjusted_unit_weight,
     convert_to_cafe24_product_code,
     merge_product_instructions,
     report_missing_instructions,
     assign_gift,
-    match_to_cafe24_example,
+    determine_box_size
 )
 import pandas as pd
 import os
@@ -52,16 +52,15 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         log_set_callback(log_get_callback() + "\n다운로드 받은 파일 검색")
         time.sleep(sleep_time)
 
-        ### Split into two files
+        ### Split into three files
         # Order list file
-        # order_list_path = rf"{output_folder}\order_list.xlsx"
+        order_list_path = rf"{output_folder}\order_list.xlsx"
         order_list_header_list = get_column_from_csv(
             r"settings\header.csv", "order_list_header"
         )
         df_order_list = df_raw_data[order_list_header_list].rename(
             columns=KOR_TO_ENG_COLUMN_MAP
         )
-        # df_order_list.to_excel(order_list_path, index=False)
 
         # Hanjin file
         hanjin_path = rf"{output_folder}\hanjin_file.xlsx"
@@ -71,8 +70,16 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         df_hanjin_list = df_raw_data[hanjin_header_list]
         df_hanjin_list.to_excel(hanjin_path, index=False)
 
+        # Cafe24 upload file
+        cafe24_upload_path = rf"{output_folder}\excel_sample_old.csv"
+        cafe24_upload_header_list = get_column_from_csv(
+            r"settings\header.csv", "cafe24_upload"
+        )
+        df_cafe24_upload = df_raw_data[cafe24_upload_header_list]
+        df_cafe24_upload.to_csv(cafe24_upload_path, index=False, encoding="utf-8-sig",)
+
         # log
-        log_set_callback(log_get_callback() + "\n헤더명에 따라 두 개의 파일로 분리")
+        log_set_callback(log_get_callback() + "\n헤더명에 따라 세 개의 파일로 분리")
         time.sleep(sleep_time)
 
         ########################################## Print out product instruction ##########################################
@@ -86,24 +93,34 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         log_set_callback(log_get_callback() + "\n상품 설명지 병합")
         time.sleep(sleep_time)
 
-        ########################################## Data Transformation ##########################################
-        #### Update weight column
-        df_order_list["weight"] = df_order_list.apply(get_final_weight, axis=1)
-        # df_order_list.to_excel(order_list_path, index=False)
-        # print(df_order_list["weight"])
-
-        # log
-        log_set_callback(log_get_callback() + "\n주문리스트의 중량 정보 입력")
-        time.sleep(sleep_time)
-
-        ####매크로 실행(포장할 때 참고할 주문리스트 만들기 위해)
-        #  run_macro("전채널주문리스트", order_list_path)
-        # log
-        log_set_callback(
-            log_get_callback() + "\n전채널주문리스트 매크로 실행\n주문리스트 파일 작성"
+        ########################################## Data Transformation(Determine box size) ##########################################
+        #### Adjust weight data
+        df_order_list["unit_weight"] = df_order_list.apply(
+            get_adjusted_unit_weight, axis=1
         )
+
+        df_order_list["item_total_weight"] = (
+            df_order_list["unit_weight"] * df_order_list["quantity"]
+        )
+
+        total_weight_by_order = df_order_list.groupby("order_number")["item_total_weight"].sum()
+        df_order_list["total_weight_by_order"] = df_order_list["order_number"].map(
+            total_weight_by_order
+        )
+
+        ### Determine box size
+        df_order_list["box_size"] = df_order_list.apply(determine_box_size, axis=1)
+        print(
+            df_order_list[
+                ["order_number", "quantity", "unit_weight", "item_total_weight", "total_weight_by_order", "box_size"]
+            ]
+        )
+
+        # log
+        log_set_callback(log_get_callback() + "\n주문리스트의 박스 정보 입력")
         time.sleep(sleep_time)
 
+        ########################################## Data Transformation ##########################################
         ### Generate serial numbers for unique order_numbers; set blank for subsequent duplicates
         # Step 1: Mark True for the first occurrence of each order_number
         df_order_list["serial_number"] = ~df_order_list["order_number"].duplicated()
@@ -121,12 +138,9 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         ### Determine gift type
         df_order_list["gift"] = df_order_list.apply(assign_gift, axis=1)
+        df_order_list.to_excel(order_list_path, index=False)
+        ########################################## ##########################################
 
-        ####카페24 양식에 맞게 수정한 파일 만들기
-        match_to_cafe24_example(output_folder, hanjin_path)
-        # log
-        log_set_callback(log_get_callback() + "\n송장등록을 위한 카페24양식 파일 작성")
-        time.sleep(sleep_time)
 
         ####매크로 실행(기존 파일을 한진택배 복수내품 양식에 맞게 변경하기 위해)
         run_macro("ProcessMultipleItems", hanjin_path)
@@ -138,12 +152,12 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         )
         time.sleep(sleep_time)
 
+        ########################################## ##########################################
         ####한진택배 사이트 열기
         webbrowser.open("https://focus.hanjin.com/login")
 
         ####result 폴더 열기
         os.startfile(f"{output_folder}")
-        print("실행 완료.")
         # log
         log_set_callback(log_get_callback() + "\n🍰🍰🍰끝! 실행 완료🍰🍰🍰")
         time.sleep(sleep_time)

@@ -1,5 +1,5 @@
-from pypdf import PdfWriter  # pip install pypdf #pdf병합기능 쓰기 위해.
-import pandas as pd  # pip install pandas openpyxl #엑셀의 데이터를 읽어오기 위해.
+from pypdf import PdfWriter
+import pandas as pd
 import re
 
 
@@ -12,33 +12,61 @@ def extract_weight(product_data):
     match = re.search(r"(\d+(\.\d+)?)\s*(kg|g)", product_data, re.IGNORECASE)
 
     if match:
-        weight = float(match.group(1))
+        unit_weight = float(match.group(1))
         unit = match.group(3).lower()
 
         # 단위가 g일 경우 kg으로 변환
         if unit == "g":
-            weight = weight / 1000
+            unit_weight = unit_weight / 1000
 
-        return weight
+        return unit_weight
     else:
         return None
 
 
-# 조건에 따라 중량 정보를 선택
-def get_final_weight(row):
-    if not pd.notna(row["weight"]):  # 중량열에 데이터 없음
-        # ->스마트 스토어나 톡스토어 주문건임. 상품명에서 중량 추출해야함.
+def get_adjusted_unit_weight(row):
+    ### Select unit weight based on conditions
+    if not pd.notna(row["unit_weight"]):  # No data in the unit_weight column
+        # -> Likely Naver or Kakao. Extract weight from product name.
         weight_from_name_column = extract_weight(row["product_name"])
         if weight_from_name_column is not None:
             return weight_from_name_column
 
-    else:  # 중량열에 데이터 있음
-        # ->카페24주문 건임(몇몇 연동된 상품 제외). 상품옵션열의 데이터에 중량 정보기 중량열의 데이터가 다를 때만 상품옵션 데이터 쓰기.
+    else:  # Data exists in the unit_weight column
+        # -> Likely Cafe24 (except for some synced products).
+        # If weight in option column differs from unit_weight column, use the option column.
         weight_from_option_column = extract_weight(row["option"])
-        if weight_from_option_column is None:  # 상품옵션에 중량 정보가 없을경우
-            return row["weight"]
-        else:  # 상품옵션에 중량 정보가 있을 경우
+        if weight_from_option_column is None:  # No weight info in the option column
+            return row["unit_weight"]
+        else:  # Weight info exists in the option column
             return weight_from_option_column
+
+
+def determine_box_size(row):
+    if "냉장배송" in row["product_name"]:
+        return "Ice"
+
+    total_weight_by_order = row["total_weight_by_order"]
+    brand = row["brand"]
+    quantity = row["quantity"]
+
+    if total_weight_by_order < 1:
+        return 73
+    elif total_weight_by_order < 2:
+        return 194
+    elif total_weight_by_order < 3.8:
+        return 41
+    elif total_weight_by_order <= 4:
+        if brand == "Royal Canin" and quantity == 2:
+            return 104
+        else:
+            return 420
+    elif total_weight_by_order <= 4.3:
+        return 104
+    elif total_weight_by_order < 8:
+        return 170
+    else:
+        return 266
 
 
 def convert_to_cafe24_product_code(order_list_pd):
@@ -117,7 +145,7 @@ def report_missing_instructions(result_directory, order_list_pd, not_found_files
     # Find product codes without instruction sheets in order_list_pd, and get the corresponding product names to use as values in the dictionary
     product_name_col = [col for col in order_list_pd.columns if "product_name" in col]
     for key in not_found_files:
-        key_in_order_list = order_list_pd.query(f"product_code == @key")
+        key_in_order_list = order_list_pd.query("product_code == @key")
         not_found_files[key] = key_in_order_list[product_name_col[0]].iat[0]
 
     # Save product codes without instruction sheets to CSV and show summary message
@@ -134,6 +162,7 @@ def report_missing_instructions(result_directory, order_list_pd, not_found_files
         )
         alert_msg = f"{len(not_found_files)}개의 설명지를 찾지 못했습니다"
         print(alert_msg)
+
 
 ### Determine gift type based on priority: gift_selection > pet_type > product_name
 def assign_gift(row):
@@ -159,23 +188,3 @@ def assign_gift(row):
         elif "캣" in product_name:
             return "캣"
     return "?"
-
-
-def match_to_cafe24_example(result_directory, hanjin_path):
-    ####배송리스트 파일 읽어오기
-    delivery_list = pd.read_excel(hanjin_path, engine="openpyxl")
-
-    ####카페24 양식에 맞게 수정한 파일 만들기
-    try:
-        # B열의 데이터까지만 남겨두기.
-        upload_to_cafe24 = delivery_list.iloc[:, :2]
-
-        # 수정된 내용을 새로운 CSV 파일로 저장
-        upload_to_cafe24.to_csv(
-            rf"{result_directory}\excel_sample_old.csv",
-            index=False,
-            encoding="utf-8-sig",
-        )
-
-    except Exception as e:
-        print(f"파일 편집 중 오류가 발생했습니다: {e}")
