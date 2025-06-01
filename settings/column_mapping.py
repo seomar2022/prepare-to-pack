@@ -14,7 +14,7 @@ KOR_TO_ENG_COLUMN_MAP = {
     "주문 상태": "order_status",
     "수령인 주소(전체)": "recipient_address",
     "배송메시지": "delivery_message",
-    "중량": "weight",
+    "중량": "unit_weight",
     "정기배송 회차": "subscription_cycle",
     "상품코드": "product_code",
     "회원추가항목_반려견/반려묘의 종류": "pet_type",
@@ -41,7 +41,7 @@ ENG_TO_KOR_COLUMN_MAP = {
     "order_status": "주문 상태",
     "recipient_address": "주소",       # 수령인 주소(전체) → 주소
     "delivery_message": "배송메시지",
-    "weight": "중량",
+    "unit_weight": "중량",
     "subscription_cycle": "정기배송 회차",
     "product_code": "상품코드",
     "pet_type": "견묘종",             # 회원추가항목 → 견묘종
@@ -51,6 +51,7 @@ ENG_TO_KOR_COLUMN_MAP = {
     "recipient_phone": "수령인 전화번호",
     "recipient_mobile": "수령인 휴대전화",
     "recipient_zip_code": "우편번호",   # 수령인 우편번호 → 우편번호
-    "product_name_with_option": "주문상품명(옵션포함)"
+    "product_name_with_option": "주문상품명(옵션포함)",
+    "box_size": "박스",
 }
 

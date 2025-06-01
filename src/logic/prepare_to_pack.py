@@ -2,15 +2,14 @@ from .module import (
     search_path,
     find_path_by_partial_name,
     get_column_from_csv,
-    run_macro,
-)
+    )
 from .before_packing import (
     get_adjusted_unit_weight,
     convert_to_cafe24_product_code,
     merge_product_instructions,
     report_missing_instructions,
     assign_gift,
-    determine_box_size
+    determine_box_size,
 )
 import pandas as pd
 import os
@@ -30,7 +29,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         sleep_time = 0.1
         log_set_callback("🍰🍰🍰시작! 프로그램 실행🍰🍰🍰")
 
-        ### 완성된 파일들을 넣어둘 폴더 만들기
+        ### Output folder
         output_folder = "result_" + datetime.now().strftime(
             "%a.%H.%M.%S"
         )  # 요일.시.분.초
@@ -63,12 +62,13 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         )
 
         # Hanjin file
-        hanjin_path = rf"{output_folder}\hanjin_file.xlsx"
+        hanjin_path = rf"{output_folder}\upload_to_hanjin.xlsx"
         hanjin_header_list = get_column_from_csv(
             r"settings\header.csv", "hanjin_header"
         )
-        df_hanjin_list = df_raw_data[hanjin_header_list]
-        df_hanjin_list.to_excel(hanjin_path, index=False)
+        df_hanjin_list = df_raw_data[hanjin_header_list].rename(
+            columns=KOR_TO_ENG_COLUMN_MAP
+        )
 
         # Cafe24 upload file
         cafe24_upload_path = rf"{output_folder}\excel_sample_old.csv"
@@ -76,7 +76,11 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             r"settings\header.csv", "cafe24_upload"
         )
         df_cafe24_upload = df_raw_data[cafe24_upload_header_list]
-        df_cafe24_upload.to_csv(cafe24_upload_path, index=False, encoding="utf-8-sig",)
+        df_cafe24_upload.to_csv(
+            cafe24_upload_path,
+            index=False,
+            encoding="utf-8-sig",
+        )
 
         # log
         log_set_callback(log_get_callback() + "\n헤더명에 따라 세 개의 파일로 분리")
@@ -103,7 +107,9 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             df_order_list["unit_weight"] * df_order_list["quantity"]
         )
 
-        total_weight_by_order = df_order_list.groupby("order_number")["item_total_weight"].sum()
+        total_weight_by_order = df_order_list.groupby("order_number")[
+            "item_total_weight"
+        ].sum()
         df_order_list["total_weight_by_order"] = df_order_list["order_number"].map(
             total_weight_by_order
         )
@@ -112,7 +118,14 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         df_order_list["box_size"] = df_order_list.apply(determine_box_size, axis=1)
         print(
             df_order_list[
-                ["order_number", "quantity", "unit_weight", "item_total_weight", "total_weight_by_order", "box_size"]
+                [
+                    "order_number",
+                    "quantity",
+                    "unit_weight",
+                    "item_total_weight",
+                    "total_weight_by_order",
+                    "box_size",
+                ]
             ]
         )
 
@@ -138,21 +151,20 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         ### Determine gift type
         df_order_list["gift"] = df_order_list.apply(assign_gift, axis=1)
-        df_order_list.to_excel(order_list_path, index=False)
+
         ########################################## ##########################################
-
-
         ####매크로 실행(기존 파일을 한진택배 복수내품 양식에 맞게 변경하기 위해)
-        run_macro("ProcessMultipleItems", hanjin_path)
-        os.rename(hanjin_path, rf"{output_folder}\upload_to_hanjin.xlsx")
+        # run_macro("ProcessMultipleItems", hanjin_path)
+        # os.rename(hanjin_path, rf"{output_folder}\upload_to_hanjin.xlsx")
+        df_hanjin_list.to_excel(hanjin_path, index=False)
+
         # log
-        log_set_callback(
-            log_get_callback()
-            + "\nProcessMultipleItems 매크로 실행\n한진 사이트에 올릴 파일 작성"
-        )
+        log_set_callback(log_get_callback() + "\n한진 사이트에 업로드할 파일 작성")
         time.sleep(sleep_time)
 
         ########################################## ##########################################
+        df_order_list.to_excel(order_list_path, index=False)
+
         ####한진택배 사이트 열기
         webbrowser.open("https://focus.hanjin.com/login")
 
