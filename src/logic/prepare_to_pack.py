@@ -24,6 +24,12 @@ import sys
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from settings.column_mapping import KOR_TO_ENG_COLUMN_MAP, ENG_TO_KOR_COLUMN_MAP
 
+from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
+from openpyxl.formatting import Rule
+from openpyxl.styles.differential import DifferentialStyle
+from openpyxl.utils.dataframe import dataframe_to_rows
+
 
 def prepare_to_pack(log_set_callback, log_get_callback):
     try:
@@ -153,24 +159,95 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         ### Determine gift type
         df_order_list["gift"] = df_order_list.apply(assign_gift, axis=1)
 
-        ########################################## ##########################################
-        ####매크로 실행(기존 파일을 한진택배 복수내품 양식에 맞게 변경하기 위해)
-        # run_macro("ProcessMultipleItems", hanjin_path)
-        # os.rename(hanjin_path, rf"{output_folder}\upload_to_hanjin.xlsx")
+        # log
+        log_set_callback(log_get_callback() + "\n주문리스트의 일련번호 입력")
+        time.sleep(sleep_time)
+
+        df_order_list.rename(columns=ENG_TO_KOR_COLUMN_MAP).to_excel(
+            order_list_path, index=False
+        )
+        ########################################## Document design for order list ##########################################
+
+        # Load the workbook and worksheet
+        wb = load_workbook(order_list_path)
+        ws = wb.active
+
+        # Define color fills
+        red_fill = PatternFill(
+            start_color="FFCCCC", end_color="FFCCCC", fill_type="solid"
+        )  # RGB(255,204,207)
+        gray_fill = PatternFill(
+            start_color="BEBEBE", end_color="BEBEBE", fill_type="solid"
+        )  # RGB(190,190,190)
+        blue_fill = PatternFill(
+            start_color="C0E6F5", end_color="C0E6F5", fill_type="solid"
+        )  # RGB(192,230,245)
+        orange_fill = PatternFill(
+            start_color="FECDA8", end_color="FECDA8", fill_type="solid"
+        )
+
+        ### Apply conditional formatting
+        # quantity >= 2 → Red
+        quantity_col = df_order_list.columns.get_loc("quantity") + 1
+        ws.conditional_formatting.add(
+            f"{chr(64 + quantity_col)}2:{chr(64 + quantity_col)}{ws.max_row}",
+            Rule(
+                type="expression",
+                dxf=DifferentialStyle(fill=red_fill),
+                formula=[f"${chr(64 + quantity_col)}2>=2"],
+            ),
+        )
+
+        # subscription_cycle not blank → Blue
+        sub_col = df_order_list.columns.get_loc("subscription_cycle") + 1
+        ws.conditional_formatting.add(
+            f"{chr(64 + sub_col)}2:{chr(64 + sub_col)}{ws.max_row}",
+            Rule(
+                type="expression",
+                dxf=DifferentialStyle(fill=blue_fill),
+                formula=[f"LEN(TRIM(${chr(64 + sub_col)}2))>0"],
+            ),
+        )
+
+        # order_number duplicates → Gray
+        order_col = df_order_list.columns.get_loc("order_number") + 1
+        order_numbers = df_order_list["order_number"]
+        duplicates = order_numbers[order_numbers.duplicated(keep=False)].unique()
+
+        for row in range(2, ws.max_row + 1):
+            cell_value = ws.cell(row=row, column=order_col).value
+            if cell_value in duplicates:
+                ws.cell(row=row, column=order_col).fill = gray_fill
+
+        # Apply orange fill to gift if membership_level in target list
+        gift_col = df_order_list.columns.get_loc("gift_selection") + 1
+        membership_col = df_order_list.columns.get_loc("membership_level") + 1
+        membership_col_letter = chr(64 + membership_col)
+        ws.conditional_formatting.add(
+            f"{chr(64 + gift_col)}2:{chr(64 + gift_col)}{ws.max_row}",
+            Rule(
+                type="expression",
+                dxf=DifferentialStyle(fill=orange_fill),
+                formula=[
+                    f'=OR(${membership_col_letter}2="SILVER", ${membership_col_letter}2="LALA", ${membership_col_letter}2="FAMILY")'
+                ],
+            ),
+        )
+
+        ### Save styled workbook
+        wb.save(order_list_path)
+
+        ########################################## Multiple items process for hanjin list ##########################################
         pd.set_option("display.max_columns", None)
         print(df_hanjin_list)
         flatten_order_items_by_order_number(df_hanjin_list).rename(
             columns=ENG_TO_KOR_COLUMN_MAP
-        ).to_excel(
-            hanjin_path, index=False
-        )
+        ).to_excel(hanjin_path, index=False)
 
         # log
         log_set_callback(log_get_callback() + "\n한진 사이트에 업로드할 파일 작성")
         time.sleep(sleep_time)
-
         ########################################## ##########################################
-        df_order_list.to_excel(order_list_path, index=False)
 
         ####한진택배 사이트 열기
         webbrowser.open("https://focus.hanjin.com/login")
