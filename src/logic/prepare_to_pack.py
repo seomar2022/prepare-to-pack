@@ -2,7 +2,7 @@ from .module import (
     search_path,
     find_path_by_partial_name,
     get_column_from_csv,
-    )
+)
 from .before_packing import (
     get_adjusted_unit_weight,
     convert_to_cafe24_product_code,
@@ -10,6 +10,7 @@ from .before_packing import (
     report_missing_instructions,
     assign_gift,
     determine_box_size,
+    flatten_order_items_by_order_number,
 )
 import pandas as pd
 import os
@@ -21,7 +22,7 @@ from pathlib import Path
 import sys
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
-from settings.column_mapping import KOR_TO_ENG_COLUMN_MAP
+from settings.column_mapping import KOR_TO_ENG_COLUMN_MAP, ENG_TO_KOR_COLUMN_MAP
 
 
 def prepare_to_pack(log_set_callback, log_get_callback):
@@ -156,7 +157,13 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         ####매크로 실행(기존 파일을 한진택배 복수내품 양식에 맞게 변경하기 위해)
         # run_macro("ProcessMultipleItems", hanjin_path)
         # os.rename(hanjin_path, rf"{output_folder}\upload_to_hanjin.xlsx")
-        df_hanjin_list.to_excel(hanjin_path, index=False)
+        pd.set_option("display.max_columns", None)
+        print(df_hanjin_list)
+        flatten_order_items_by_order_number(df_hanjin_list).rename(
+            columns=ENG_TO_KOR_COLUMN_MAP
+        ).to_excel(
+            hanjin_path, index=False
+        )
 
         # log
         log_set_callback(log_get_callback() + "\n한진 사이트에 업로드할 파일 작성")

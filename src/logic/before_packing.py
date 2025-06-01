@@ -188,3 +188,38 @@ def assign_gift(row):
         elif "캣" in product_name:
             return "캣"
     return "?"
+
+
+# Define a function to restructure each group
+def flatten_order_items_by_order_number(df):
+    """
+    Restructure the DataFrame by grouping rows by 'order_number' and
+    flattening product information into a single row per order.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame with order data.
+    Returns:
+        pd.DataFrame: A restructured DataFrame with one row per order_number.
+    """
+    grouped = df.groupby("order_number")
+    base_columns = df.columns.tolist()
+
+    def restructure(group):
+        # Get the first row's base info
+        first_row = group.iloc[0][base_columns].tolist()
+        rest = []
+        for _, row in group.iloc[1:].iterrows():
+            rest.extend([row["product_name_with_option"], row["quantity"]])
+        return first_row + rest
+
+    # Apply restructure and convert to DataFrame
+    restructured_data = grouped.apply(restructure).apply(pd.Series)
+
+    # Generate column names
+    extra_cols = []
+    max_extra = restructured_data.shape[1] - len(base_columns)
+    for i in range(0, max_extra, 2):
+        extra_cols.extend(["product_name_with_option", "quantity"])
+
+    restructured_data.columns = base_columns + extra_cols
+    return restructured_data
