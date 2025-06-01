@@ -25,10 +25,10 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from settings.column_mapping import KOR_TO_ENG_COLUMN_MAP, ENG_TO_KOR_COLUMN_MAP
 
 from openpyxl import load_workbook
-from openpyxl.styles import PatternFill
+from openpyxl.styles import PatternFill, Alignment, Border, Side
 from openpyxl.formatting import Rule
 from openpyxl.styles.differential import DifferentialStyle
-from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.worksheet.page import PageMargins
 
 
 def prepare_to_pack(log_set_callback, log_get_callback):
@@ -123,18 +123,6 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         ### Determine box size
         df_order_list["box_size"] = df_order_list.apply(determine_box_size, axis=1)
-        print(
-            df_order_list[
-                [
-                    "order_number",
-                    "quantity",
-                    "unit_weight",
-                    "item_total_weight",
-                    "total_weight_by_order",
-                    "box_size",
-                ]
-            ]
-        )
 
         # log
         log_set_callback(log_get_callback() + "\n주문리스트의 박스 정보 입력")
@@ -233,13 +221,69 @@ def prepare_to_pack(log_set_callback, log_get_callback):
                 ],
             ),
         )
+        ########################################## Document design for order list ##########################################
+        price_col = df_order_list.columns.get_loc("price") + 1
+        for row in ws.iter_rows(min_row=2, min_col=price_col, max_col=price_col):
+            for cell in row:
+                cell.number_format = "#,##0"
 
-        ### Save styled workbook
+        gift_col = df_order_list.columns.get_loc("gift") + 1
+        for row in ws.iter_rows(min_row=2, min_col=gift_col, max_col=gift_col):
+            for cell in row:
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        # Mapping of column headers to desired widths
+        column_widths = {
+            "serial_number": 2.25,
+            "order_number": 8.13,
+            "orderer_name": 6,
+            "product_name": 30,
+            "option": 9,
+            "quantity": 3,
+            "recipient_name": 6,
+            "gift": 6,
+            "price": 8,
+            "recipient_address": 29,
+            "delivery_message": 13,
+            "box_size": 3.2,
+        }
+
+        for col in df_order_list.columns.to_list():
+            col_idx = df_order_list.columns.get_loc(col) + 1
+            col_letter = chr(64 + col_idx)
+            if col in column_widths.keys():
+                ws.column_dimensions[col_letter].width = column_widths.get(col)
+            else:
+                ws.column_dimensions[col_letter].hidden = True
+
+        # 1. Set header rows to repeat when printing
+        ws.print_title_rows = "$1:$1"  # Repeat row 1 on each printed page
+
+        # 2. Set headers and footers
+        ws.oddHeader.left.text = "&D &T"  # Date and time
+        ws.oddHeader.center.text = "전채널 주문 리스트"
+        ws.oddHeader.right.text = "&P/&N"  # Page X of N
+
+        # 3. Set margins (in inches)
+        ws.page_margins = PageMargins(
+            left=0.25, right=0.25, top=0.75, bottom=0.75, header=0.3, footer=0.3
+        )
+
+        ws.page_setup.orientation = ws.ORIENTATION_LANDSCAPE
+
+        ### Border
+        # Define border styles
+        thin_side = Side(style="thin")  # Like xlThin in VBA
+
+        # inside horizontal borders
+        for row_idx in range(2, ws.max_row):  # Exclude last row
+            for col_idx in range(1, ws.max_column + 1):
+                cell = ws.cell(row=row_idx, column=col_idx)
+                cell.border = Border(bottom=thin_side)
+        ### Save styled workbookr
         wb.save(order_list_path)
 
         ########################################## Multiple items process for hanjin list ##########################################
-        pd.set_option("display.max_columns", None)
-        print(df_hanjin_list)
         flatten_order_items_by_order_number(df_hanjin_list).rename(
             columns=ENG_TO_KOR_COLUMN_MAP
         ).to_excel(hanjin_path, index=False)
