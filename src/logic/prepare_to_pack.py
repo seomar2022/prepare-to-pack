@@ -151,11 +151,28 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         log_set_callback(log_get_callback() + "\n주문리스트의 일련번호 입력")
         time.sleep(sleep_time)
 
-        df_order_list.rename(columns=ENG_TO_KOR_COLUMN_MAP).to_excel(
-            order_list_path, index=False
-        )
+        ### Reorder column
+        column_order = [
+            "serial_number",
+            "order_number",
+            "orderer_name",
+            "product_name",
+            "option",
+            "quantity",
+            "recipient_name",
+            "gift",
+            "price",
+            "recipient_address",
+            "delivery_message",
+            "box_size",
+            "subscription_cycle",
+            "gift_selection",
+            "membership_level",
+        ]
+        df_order_list[column_order].to_excel(order_list_path, index=False)
         ########################################## Document design for order list ##########################################
 
+        df_order_list = pd.read_excel(order_list_path)
         # Load the workbook and worksheet
         wb = load_workbook(order_list_path)
         ws = wb.active
@@ -256,6 +273,13 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             else:
                 ws.column_dimensions[col_letter].hidden = True
 
+        ### Rename header row
+        for cell in ws[1]:  # First row
+            eng_col = cell.value
+            if eng_col in ENG_TO_KOR_COLUMN_MAP:
+                cell.value = ENG_TO_KOR_COLUMN_MAP[eng_col]
+
+        ### Print settings
         # 1. Set header rows to repeat when printing
         ws.print_title_rows = "$1:$1"  # Repeat row 1 on each printed page
 
@@ -282,7 +306,6 @@ def prepare_to_pack(log_set_callback, log_get_callback):
                 cell.border = Border(bottom=thin_side)
         ### Save styled workbookr
         wb.save(order_list_path)
-
         ########################################## Multiple items process for hanjin list ##########################################
         flatten_order_items_by_order_number(df_hanjin_list).rename(
             columns=ENG_TO_KOR_COLUMN_MAP

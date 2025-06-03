@@ -53,4 +53,6 @@ ENG_TO_KOR_COLUMN_MAP = {
     "recipient_zip_code": "우편번호",  # 수령인 우편번호 → 우편번호
     "product_name_with_option": "상품명(옵션)",
     "box_size": "박스",
+    "serial_number": "연번",
+    "gift": "사은품",
 }
