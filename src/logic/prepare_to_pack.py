@@ -251,18 +251,18 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         # Mapping of column headers to desired widths
         column_widths = {
-            "serial_number": 2.25,
-            "order_number": 8.13,
-            "orderer_name": 6,
-            "product_name": 30,
-            "option": 9,
-            "quantity": 3,
-            "recipient_name": 6,
-            "gift": 6,
+            "serial_number": 3,
+            "order_number": 9,
+            "orderer_name": 7,
+            "product_name": 38,
+            "option": 8,
+            "quantity": 4,
+            "recipient_name": 7,
+            "gift": 7,
             "price": 8,
-            "recipient_address": 29,
-            "delivery_message": 13,
-            "box_size": 3.2,
+            "recipient_address": 28,
+            "delivery_message": 14,
+            "box_size": 5,
         }
 
         for col in df_order_list.columns.to_list():
@@ -279,20 +279,31 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             if eng_col in ENG_TO_KOR_COLUMN_MAP:
                 cell.value = ENG_TO_KOR_COLUMN_MAP[eng_col]
 
+        ### Apply wrap text to all cells in the data range
+        for row in ws.iter_rows(
+            min_row=1, max_row=ws.max_row, min_col=1, max_col=ws.max_column
+        ):
+            for cell in row:
+                cell.alignment = Alignment(wrap_text=True)
+
         ### Print settings
-        # 1. Set header rows to repeat when printing
+        # Set header rows to repeat when printing
         ws.print_title_rows = "$1:$1"  # Repeat row 1 on each printed page
 
-        # 2. Set headers and footers
+        # Set headers and footers
         ws.oddHeader.left.text = "&D &T"  # Date and time
         ws.oddHeader.center.text = "전채널 주문 리스트"
         ws.oddHeader.right.text = "&P/&N"  # Page X of N
 
-        # 3. Set margins (in inches)
+        # Set margins (in inches)
         ws.page_margins = PageMargins(
             left=0.25, right=0.25, top=0.75, bottom=0.75, header=0.3, footer=0.3
         )
 
+        ## Set paper size to A4
+        ws.page_setup.paperSize = ws.PAPERSIZE_A4
+
+        # Set page orientation to landscape
         ws.page_setup.orientation = ws.ORIENTATION_LANDSCAPE
 
         ### Border
