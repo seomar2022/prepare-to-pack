@@ -34,7 +34,7 @@ from openpyxl.worksheet.page import PageMargins
 def prepare_to_pack(log_set_callback, log_get_callback):
     try:
         sleep_time = 0.1
-        log_set_callback("🍰🍰🍰시작! 프로그램 실행🍰🍰🍰")
+        log_set_callback("시작! 프로그램 실행")
 
         ### Output folder
         output_folder = "result_" + datetime.now().strftime(
@@ -170,7 +170,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "membership_level",
         ]
         df_order_list[column_order].to_excel(order_list_path, index=False)
-        ########################################## Document design for order list ##########################################
+        ########################################## Document design for order list(fill the color) ##########################################
 
         df_order_list = pd.read_excel(order_list_path)
         # Load the workbook and worksheet
@@ -249,6 +249,33 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             for cell in row:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
 
+        ### Border
+        # Define border styles
+        thin_side = Side(style="thin")  # Like xlThin in VBA
+
+        # inside horizontal borders
+        for row_idx in range(2, ws.max_row):  # Exclude last row
+            for col_idx in range(1, ws.max_column + 1):
+                cell = ws.cell(row=row_idx, column=col_idx)
+                cell.border = Border(bottom=thin_side)
+
+        ### Insert the box size counts at the buttom
+        # Count the occurrences of each box size and convert the result into a DataFrame
+        box_size_counts = df_order_list["box_size"].value_counts().reset_index()
+        box_size_counts.columns = ["박스", "개수"]
+
+        start_row = ws.max_row + 3
+
+        # Write headers from DataFrame
+        for col_idx, col_name in enumerate(box_size_counts.columns, start=1):
+            ws.cell(row=start_row, column=col_idx + 1, value=col_name)
+
+        # Write data rows
+        for row_idx, row in enumerate(box_size_counts.itertuples(index=False), start=1):
+            for col_idx, value in enumerate(row, start=1):
+                ws.cell(row=start_row + row_idx, column=col_idx + 1, value=value)
+
+        ### Set column width
         # Mapping of column headers to desired widths
         column_widths = {
             "serial_number": 3,
@@ -306,17 +333,9 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         # Set page orientation to landscape
         ws.page_setup.orientation = ws.ORIENTATION_LANDSCAPE
 
-        ### Border
-        # Define border styles
-        thin_side = Side(style="thin")  # Like xlThin in VBA
-
-        # inside horizontal borders
-        for row_idx in range(2, ws.max_row):  # Exclude last row
-            for col_idx in range(1, ws.max_column + 1):
-                cell = ws.cell(row=row_idx, column=col_idx)
-                cell.border = Border(bottom=thin_side)
         ### Save styled workbookr
         wb.save(order_list_path)
+
         ########################################## Multiple items process for hanjin list ##########################################
         flatten_order_items_by_order_number(df_hanjin_list).rename(
             columns=ENG_TO_KOR_COLUMN_MAP
@@ -333,7 +352,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         ####result 폴더 열기
         os.startfile(f"{output_folder}")
         # log
-        log_set_callback(log_get_callback() + "\n🍰🍰🍰끝! 실행 완료🍰🍰🍰")
+        log_set_callback(log_get_callback() + "\n끝! 실행 완료")
         time.sleep(sleep_time)
     except Exception as e:
         log_set_callback(log_get_callback() + f"\n❗❗❗오류 발생: {e}")
