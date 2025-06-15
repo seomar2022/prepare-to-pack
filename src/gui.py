@@ -15,11 +15,12 @@ class GUI:
 
     def setup_ui(self):
         """Initialize the GUI layout"""
-        self.root.title("LALA Pet Mall - 출고 자동화 도우미")
+        self.root.title("LALA Pet Mall - 출고 준비 프로그램")
         self.root.geometry("400x600")
         self.root.configure(bg="#fdfaf4")
         self.root.resizable(False, False)
         self.root.attributes("-topmost", True)
+        self.root.iconbitmap("resources/img/favicon.ico")
 
         # Main Centering Frame
         main_frame = tk.Frame(self.root, bg="#fdfaf4")
@@ -28,14 +29,14 @@ class GUI:
         # Title
         title = tk.Label(
             main_frame,
-            text="LALA Pet Mall\n출고 자동화 도우미",
+            text="🐶LALA Pet Mall 출고 준비 프로그램🐶",
             font=("Noto Sans KR", self.font_size + 2, "bold"),
             bg="#fdfaf4",
             fg="#2d4831",
         )
         title.pack(pady=(20, 10))
 
-        # Step 1 Frame
+        ########################################## Step 1 Frame ##########################################
         step1_frame = tk.Frame(main_frame, bg="#fdfaf4")
         step1_frame.pack(pady=(10, 5))
 
@@ -49,15 +50,15 @@ class GUI:
 
         tk.Label(
             step1_frame,
-            text="cafe24에서 '출고준비통합'양식으로 파일을 다운로드 받은 후 이 버튼을 클릭해 주세요.",
-            font=("Noto Sans KR", self.font_size - 2),
+            text="cafe24에서 '출고준비통합'양식으로 파일을 다운로드 받은 후 아래 버튼을 클릭해 주세요.",
+            font=("Noto Sans KR", self.font_size - 3),
             bg="#fdfaf4",
             wraplength=350,
         ).pack(pady=(0, 10))
 
         tk.Button(
             step1_frame,
-            text="주문서 정리하기",
+            text="주문서 정리",
             command=lambda: threading.Thread(
                 target=self.on_before_packing, args=(self.append_log, self.get_log)
             ).start(),
@@ -71,7 +72,7 @@ class GUI:
             cursor="hand2",
         ).pack()
 
-        # Step 2 Frame
+        ########################################## Step 2 Frame ##########################################
         step2_frame = tk.Frame(main_frame, bg="#fdfaf4")
         step2_frame.pack(pady=(20, 5))
 
@@ -85,8 +86,8 @@ class GUI:
 
         tk.Label(
             step2_frame,
-            text="한진택배에서 '원본파일'을 다운로드 받은 후 이 버튼을 클릭해 주세요.",
-            font=("Noto Sans KR", self.font_size - 2),
+            text="한진택배에서 '원본파일'을 다운로드 받은 후 아래 버튼을 클릭해 주세요.",
+            font=("Noto Sans KR", self.font_size - 3),
             bg="#fdfaf4",
             wraplength=350,
         ).pack(pady=(0, 10))
@@ -107,7 +108,7 @@ class GUI:
             cursor="hand2",
         ).pack()
 
-        # Log Frame
+        ########################################## Log Frame ##########################################
         log_frame = tk.Frame(main_frame, bg="#fdfaf4")
         log_frame.pack(pady=(20, 10), padx=20, fill="both", expand=True)
 
@@ -124,7 +125,7 @@ class GUI:
 
         self.log_widget = Text(
             text_frame,
-            font=("Courier New", self.font_size - 2),
+            font=("Noto Sans KR", self.font_size - 2),
             height=8,
             wrap="word",
             bg="#ffffff",
@@ -137,18 +138,8 @@ class GUI:
         scrollbar.pack(side="right", fill="y")
         self.log_widget.config(yscrollcommand=scrollbar.set)
 
-        clear_btn = tk.Button(
-            log_frame,
-            text="로그 지우기",
-            command=lambda: self.log_widget.delete("1.0", END),
-            font=("Noto Sans KR", self.font_size - 2),
-            bg="#d3d3d3",
-            cursor="hand2",
-        )
-        clear_btn.pack(anchor="e", pady=5)
-
     def append_log(self, message):
-        self.log_widget.insert(END, message)
+        self.log_widget.insert(END, message + "\n")
         self.log_widget.see(END)
 
     def get_log(self):

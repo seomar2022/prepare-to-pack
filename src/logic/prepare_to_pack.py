@@ -34,7 +34,7 @@ from openpyxl.worksheet.page import PageMargins
 def prepare_to_pack(log_set_callback, log_get_callback):
     try:
         sleep_time = 0.1
-        log_set_callback("시작! 프로그램 실행")
+        log_set_callback("🐶🐶🐶시작! 프로그램 실행🐶🐶🐶")
 
         ### Output folder
         output_folder = "result_" + datetime.now().strftime(
@@ -55,7 +55,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         df_raw_data = pd.read_csv(download_from_cafe24_path)
 
         # log
-        log_set_callback(log_get_callback() + "\n다운로드 받은 파일 검색")
+        log_set_callback("다운로드 받은 파일 검색")
         time.sleep(sleep_time)
 
         ### Split into three files
@@ -90,7 +90,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         )
 
         # log
-        log_set_callback(log_get_callback() + "\n헤더명에 따라 세 개의 파일로 분리")
+        log_set_callback("헤더명에 따라 세 개의 파일로 분리")
         time.sleep(sleep_time)
 
         ########################################## Print out product instruction ##########################################
@@ -101,7 +101,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         report_missing_instructions(output_folder, df_order_list, not_found_files)
 
         # log
-        log_set_callback(log_get_callback() + "\n상품 설명지 병합")
+        log_set_callback("상품 설명지 병합")
         time.sleep(sleep_time)
 
         ########################################## Data Transformation(Determine box size) ##########################################
@@ -125,7 +125,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         df_order_list["box_size"] = df_order_list.apply(determine_box_size, axis=1)
 
         # log
-        log_set_callback(log_get_callback() + "\n주문리스트의 박스 정보 입력")
+        log_set_callback("주문리스트의 박스 정보 입력")
         time.sleep(sleep_time)
 
         ########################################## Data Transformation ##########################################
@@ -148,7 +148,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         df_order_list["gift"] = df_order_list.apply(assign_gift, axis=1)
 
         # log
-        log_set_callback(log_get_callback() + "\n주문리스트의 일련번호 입력")
+        log_set_callback("주문리스트의 일련번호 입력")
         time.sleep(sleep_time)
 
         ### Reorder column
@@ -342,7 +342,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         ).to_excel(hanjin_path, index=False)
 
         # log
-        log_set_callback(log_get_callback() + "\n한진 사이트에 업로드할 파일 작성")
+        log_set_callback("한진 사이트에 업로드할 파일 작성")
         time.sleep(sleep_time)
         ########################################## ##########################################
 
@@ -352,7 +352,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         ####result 폴더 열기
         os.startfile(f"{output_folder}")
         # log
-        log_set_callback(log_get_callback() + "\n끝! 실행 완료")
+        log_set_callback("🐶🐶🐶끝! 실행 완료🐶🐶🐶")
         time.sleep(sleep_time)
     except Exception as e:
-        log_set_callback(log_get_callback() + f"\n❗❗❗오류 발생: {e}")
+        log_set_callback(f"⚠️오류 발생: {e}")
