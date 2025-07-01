@@ -1,7 +1,6 @@
 import pandas as pd
 import os
 import csv
-import tkinter as tk
 
 
 ####설정폴더에서 경로찾기
@@ -96,40 +95,3 @@ def split_csv_by_column_index(csv_file_path, excel_file_path, column_indices):
         print(f"CSV 파일을 찾을 수 없습니다: {csv_file_path}")
     except Exception as e:
         print(f"파일을 처리하는 중 오류가 발생했습니다: {e}")
-
-
-###GUI 툴팁
-class ToolTip:
-    def __init__(self, widget, text):
-        self.widget = widget
-        self.text = text
-        self.tooltip_window = None
-        self.widget.bind("<Enter>", self.show_tooltip)
-        self.widget.bind("<Leave>", self.hide_tooltip)
-
-    def show_tooltip(self, event=None):
-        if self.tooltip_window or not self.text:
-            return
-        x, y, _cx, cy = self.widget.bbox("insert")
-        x += self.widget.winfo_rootx() + 25
-        y += self.widget.winfo_rooty() + cy + 25
-        self.tooltip_window = tw = tk.Toplevel(self.widget)
-        tw.wm_overrideredirect(True)  # 창 프레임 제거
-        tw.wm_geometry(f"+{x}+{y}")
-        tw.attributes("-topmost", True)
-
-        label = tk.Label(
-            tw,
-            text=self.text,
-            justify="left",
-            relief="solid",
-            borderwidth=1,
-            font=("Arial", 10, "normal"),
-        )
-        label.pack(ipadx=1)
-
-    def hide_tooltip(self, event=None):
-        tw = self.tooltip_window
-        self.tooltip_window = None
-        if tw:
-            tw.destroy()

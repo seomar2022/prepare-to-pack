@@ -1,7 +1,9 @@
 import tkinter as tk
-from tkinter import PhotoImage, StringVar, Text, Scrollbar, END
+from tkinter import Text, Scrollbar, END
 import threading
-from logic.module import ToolTip
+from tkinter import filedialog
+from tkinter import messagebox
+from logic.config import save_download_path
 
 
 class GUI:
@@ -26,15 +28,33 @@ class GUI:
         main_frame = tk.Frame(self.root, bg="#fdfaf4")
         main_frame.pack(fill="both", expand=True)
 
-        # Title
+        ########################################## Title Frame ##########################################
+        title_frame = tk.Frame(main_frame, bg="#fdfaf4")
+        title_frame.pack(pady=(20, 10), anchor="center")
+
+        ### title
         title = tk.Label(
-            main_frame,
-            text="🐶LALA Pet Mall 출고 준비 프로그램🐶",
+            title_frame,
+            text="LALA Pet Mall 출고 준비 프로그램",
             font=("Noto Sans KR", self.font_size + 2, "bold"),
             bg="#fdfaf4",
             fg="#2d4831",
         )
-        title.pack(pady=(20, 10))
+        title.pack(side="left", padx=10)
+
+        ### Settings
+        # Settings gear button under title
+        self.gear_icon = tk.PhotoImage(file="resources/img/gear.png")
+        settings_button = tk.Button(
+            title_frame,
+            image=self.gear_icon,
+            command=self.set_download_folder,
+            bg="#fdfaf4",
+            bd=0,
+            activebackground="#fdfaf4",
+            cursor="hand2",
+        )
+        settings_button.pack(side="left", padx=10)
 
         ########################################## Step 1 Frame ##########################################
         step1_frame = tk.Frame(main_frame, bg="#fdfaf4")
@@ -144,3 +164,11 @@ class GUI:
 
     def get_log(self):
         return self.log_widget.get("1.0", END)
+
+    def set_download_folder(self):
+        folder = filedialog.askdirectory(title="다운로드 폴더 선택")
+        if folder:
+            save_download_path(folder)
+            messagebox.showinfo(
+                "저장됨", f"다운로드 폴더:\n{folder} 로 설정되었습니다."
+            )
