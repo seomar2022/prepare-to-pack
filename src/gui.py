@@ -1,9 +1,9 @@
+import subprocess
 import tkinter as tk
-from tkinter import Text, Scrollbar, END
+from tkinter import Text, Scrollbar, END, filedialog, messagebox
 import threading
-from tkinter import filedialog
-from tkinter import messagebox
-from logic.config import save_download_path
+from src.logic.config import save_download_path, get_instruction_folder
+from src.logic.module import resource_path
 
 
 class GUI:
@@ -22,7 +22,7 @@ class GUI:
         self.root.configure(bg="#fdfaf4")
         self.root.resizable(False, False)
         self.root.attributes("-topmost", True)
-        self.root.iconbitmap("resources/img/favicon.ico")
+        self.root.iconbitmap(resource_path("resources/img/favicon.ico"))
 
         # Main Centering Frame
         main_frame = tk.Frame(self.root, bg="#fdfaf4")
@@ -40,11 +40,10 @@ class GUI:
             bg="#fdfaf4",
             fg="#2d4831",
         )
-        title.pack(side="left", padx=10)
+        title.pack(side="left")
 
         ### Settings
-        # Settings gear button under title
-        self.gear_icon = tk.PhotoImage(file="resources/img/gear.png")
+        self.gear_icon = tk.PhotoImage(file=resource_path("resources/img/gear.png"))
         settings_button = tk.Button(
             title_frame,
             image=self.gear_icon,
@@ -54,7 +53,24 @@ class GUI:
             activebackground="#fdfaf4",
             cursor="hand2",
         )
-        settings_button.pack(side="left", padx=10)
+        settings_button.pack(side="left", padx=5)
+
+        ### product_instruction
+        instruction_folder = get_instruction_folder()
+
+        self.document_icon = tk.PhotoImage(
+            file=resource_path("resources/img/document.png")
+        )
+        instruction_button = tk.Button(
+            title_frame,
+            image=self.document_icon,
+            command=lambda: subprocess.Popen(f'explorer "{instruction_folder}"'),
+            bg="#fdfaf4",
+            bd=0,
+            activebackground="#fdfaf4",
+            cursor="hand2",
+        )
+        instruction_button.pack(side="left", padx=5)
 
         ########################################## Step 1 Frame ##########################################
         step1_frame = tk.Frame(main_frame, bg="#fdfaf4")

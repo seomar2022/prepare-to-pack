@@ -1,9 +1,9 @@
-from .module import (
+from src.logic.module import (
     search_path,
     find_path_by_partial_name,
     get_column_from_csv,
 )
-from .before_packing import (
+from src.logic.before_packing import (
     get_adjusted_unit_weight,
     convert_to_cafe24_product_code,
     merge_product_instructions,
@@ -30,6 +30,10 @@ from openpyxl.formatting import Rule
 from openpyxl.styles.differential import DifferentialStyle
 from openpyxl.worksheet.page import PageMargins
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def prepare_to_pack(log_set_callback, log_get_callback):
     try:
@@ -41,10 +45,11 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "%a.%H.%M.%S"
         )  # 요일.시.분.초
         os.makedirs(output_folder)
+        logger.info("Output folder created")
 
         ########################################## Split file from download folder ##########################################
         # Get the folder path from setting\path.csv where the raw file is located
-        download_from_internet_path = search_path("download_from_internet")
+        download_from_internet_path = search_path()
 
         # Find the file downloaded from Cafe24
         # File name format downloaded from Cafe24: lalapetmall_today's_date_serialnumber_serialnumber
@@ -56,6 +61,8 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         # log
         log_set_callback("다운로드 받은 파일 검색")
+        logger.info("Find the file downloaded from Cafe24")
+
         time.sleep(sleep_time)
 
         ### Split into three files
@@ -64,9 +71,11 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         order_list_header_list = get_column_from_csv(
             r"settings\header.csv", "order_list_header"
         )
+        logger.info("Get columns from settings\header.csv")
         df_order_list = df_raw_data[order_list_header_list].rename(
             columns=KOR_TO_ENG_COLUMN_MAP
         )
+        logger.info("Split into three files: 1. order list")
 
         # Hanjin file
         hanjin_path = rf"{output_folder}\upload_to_hanjin.xlsx"
@@ -76,6 +85,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         df_hanjin_list = df_raw_data[hanjin_header_list].rename(
             columns=KOR_TO_ENG_COLUMN_MAP
         )
+        logger.info("Split into three files: 2. hanjin")
 
         # Cafe24 upload file
         cafe24_upload_path = rf"{output_folder}\excel_sample_old.csv"
@@ -88,6 +98,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             index=False,
             encoding="utf-8-sig",
         )
+        logger.info("Split into three files: 3. cafe24")
 
         # log
         log_set_callback("헤더명에 따라 세 개의 파일로 분리")
@@ -102,6 +113,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         # log
         log_set_callback("상품 설명지 병합")
+        logger.info("Merge product instructions")
         time.sleep(sleep_time)
 
         ########################################## Data Transformation(Determine box size) ##########################################
@@ -120,11 +132,14 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         df_order_list["total_weight_by_order"] = df_order_list["order_number"].map(
             total_weight_by_order
         )
+        logger.info("Weight data adjusted")
+
 
         ### Determine box size
         df_order_list["box_size"] = df_order_list.apply(determine_box_size, axis=1)
 
         # log
+        logger.info("Determine box size")
         log_set_callback("주문리스트의 박스 정보 입력")
         time.sleep(sleep_time)
 
@@ -143,9 +158,12 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         df_order_list.loc[
             df_order_list["order_number"].duplicated(), "serial_number"
         ] = ""
+        logger.info("Serial numbers generated")
+
 
         ### Determine gift type
         df_order_list["gift"] = df_order_list.apply(assign_gift, axis=1)
+        logger.info("Gift type determined")
 
         # log
         log_set_callback("주문리스트의 일련번호 입력")

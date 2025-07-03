@@ -1,28 +1,33 @@
+import json
+import sys
 import pandas as pd
 import os
-import csv
+from src.logic.config import get_config_path
 
 
-####설정폴더에서 경로찾기
-def search_path(header_name):
+def search_path():
+    """
+    Read the 'download_path' from config.json stored in APPDATA.
+    Returns an empty string if not set.
+    """
     try:
-        # CSV 파일 열기
-        with open("settings\\path.csv", mode="r", encoding="utf-8-sig") as file:
-            reader = csv.reader(file)
+        config_path = get_config_path()
 
-            # 데이터 검색
-            for row in reader:
-                if row[0].strip() == header_name:
-                    return os.path.expanduser(row[1].strip())
-
-            print(f"헤더 '{header_name}'을(를) 찾을 수 없습니다.")
+        if not os.path.exists(config_path):
+            print(f"{config_path} does not exist. Returning empty string.")
             return ""
 
-    except FileNotFoundError:
-        print("설정 파일을 찾을 수 없습니다")
-        return ""
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        path_value = config.get("download_path", "")
+        if path_value:
+            return os.path.expanduser(path_value)
+        else:
+            print("'download_path' key not found in config.json.")
+            return ""
     except Exception as e:
-        print(f"설정 파일을 읽는 중 오류가 발생했습니다: {e}")
+        print(f"Error reading config.json: {e}")
         return ""
 
 
@@ -60,6 +65,8 @@ def get_column_from_csv(file_path, column_name):
         pd.Series: 해당 열의 데이터 시리즈
     """
     try:
+        file_path = resource_path(file_path)
+
         # CSV 파일 읽기
         df = pd.read_csv(file_path, encoding="utf-8")
 
@@ -95,3 +102,14 @@ def split_csv_by_column_index(csv_file_path, excel_file_path, column_indices):
         print(f"CSV 파일을 찾을 수 없습니다: {csv_file_path}")
     except Exception as e:
         print(f"파일을 처리하는 중 오류가 발생했습니다: {e}")
+
+
+def resource_path(relative_path):
+    """
+    Get absolute path to resource, working for dev and for PyInstaller
+    """
+    try:
+        base_path = sys._MEIPASS  # PyInstaller sets this at runtime
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)

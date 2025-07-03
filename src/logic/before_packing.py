@@ -1,3 +1,5 @@
+import os
+from src.logic.config import get_instruction_folder, get_product_code_mapping
 from pypdf import PdfWriter
 import pandas as pd
 import re
@@ -76,7 +78,7 @@ def convert_to_cafe24_product_code(order_list_pd):
 
     # Load and clean product code mappings for Cafe24, Naver, and Kakao
     df_product_code_mapping = pd.read_excel(
-        r"resources\product_code_mapping.xlsx", engine="openpyxl"
+        get_product_code_mapping(), engine="openpyxl"
     )
 
     df_product_code_mapping["naver_code"] = (
@@ -131,7 +133,9 @@ def merge_product_instructions(output_folder, converted_codes):
     # Append the instruction sheet corresponding to each converted code
     for converted_code in converted_codes:
         try:
-            merge_pdf.append(f"resources\\product_instruction\\{converted_code}.pdf")
+            merge_pdf.append(
+                os.path.join(get_instruction_folder(), f"{converted_code}.pdf")
+            )
         except FileNotFoundError:
             not_found_files[converted_code] = ""
 
