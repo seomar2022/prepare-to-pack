@@ -37,7 +37,6 @@ logger = logging.getLogger(__name__)
 
 def prepare_to_pack(log_set_callback, log_get_callback):
     try:
-        sleep_time = 0.1
         log_set_callback("🐶🐶🐶시작! 프로그램 실행🐶🐶🐶")
 
         ### Output folder
@@ -62,8 +61,6 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         # log
         log_set_callback("다운로드 받은 파일 검색")
         logger.info("Find the file downloaded from Cafe24")
-
-        time.sleep(sleep_time)
 
         ### Split into three files
         # Order list file
@@ -102,7 +99,6 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         # log
         log_set_callback("헤더명에 따라 세 개의 파일로 분리")
-        time.sleep(sleep_time)
 
         ########################################## Print out product instruction ##########################################
         converted_cafe24_codes = convert_to_cafe24_product_code(df_order_list)
@@ -114,7 +110,6 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         # log
         log_set_callback("상품 설명지 병합")
         logger.info("Merge product instructions")
-        time.sleep(sleep_time)
 
         ########################################## Data Transformation(Determine box size) ##########################################
         #### Adjust weight data
@@ -134,14 +129,12 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         )
         logger.info("Weight data adjusted")
 
-
         ### Determine box size
         df_order_list["box_size"] = df_order_list.apply(determine_box_size, axis=1)
 
         # log
         logger.info("Determine box size")
         log_set_callback("주문리스트의 박스 정보 입력")
-        time.sleep(sleep_time)
 
         ########################################## Data Transformation ##########################################
         ### Generate serial numbers for unique order_numbers; set blank for subsequent duplicates
@@ -151,15 +144,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         # Step 2: Assign a running number to the first occurrences. cumsum: cumulative sum
         df_order_list["serial_number"] = df_order_list["serial_number"].cumsum()
 
-        # Step 3. Convert column to object (string-friendly) type
-        df_order_list["serial_number"] = df_order_list["serial_number"].astype(object)
-
-        # Step 4: Replace non-first rows (False values) with blank
-        df_order_list.loc[
-            df_order_list["order_number"].duplicated(), "serial_number"
-        ] = ""
         logger.info("Serial numbers generated")
-
 
         ### Determine gift type
         df_order_list["gift"] = df_order_list.apply(assign_gift, axis=1)
@@ -167,7 +152,24 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         # log
         log_set_callback("주문리스트의 일련번호 입력")
-        time.sleep(sleep_time)
+
+        ###
+        # Columns to clean duplicates
+        cols_to_clean = [
+            "order_number",
+            "orderer_name",
+            "recipient_name",
+            "gift",
+            "recipient_address",
+            "delivery_message",
+            "box_size",
+        ]
+
+        # For each column, replace duplicate values with ''
+        for col in cols_to_clean:
+            df_order_list[col] = df_order_list[col].where(
+                ~df_order_list["serial_number"].duplicated(), ""
+            )
 
         ### Reorder column
         column_order = [
@@ -188,12 +190,14 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "membership_level",
         ]
         df_order_list[column_order].to_excel(order_list_path, index=False)
+        logger.info("df_order_list[column_order]: ", df_order_list[column_order])
         ########################################## Document design for order list(fill the color) ##########################################
 
         df_order_list = pd.read_excel(order_list_path)
         # Load the workbook and worksheet
         wb = load_workbook(order_list_path)
         ws = wb.active
+        max_row = ws.max_row
 
         # Define color fills
         red_fill = PatternFill(
@@ -212,8 +216,9 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         ### Apply conditional formatting
         # quantity >= 2 → Red
         quantity_col = df_order_list.columns.get_loc("quantity") + 1
+        logger.info("quantity_col: %s", quantity_col)
         ws.conditional_formatting.add(
-            f"{chr(64 + quantity_col)}2:{chr(64 + quantity_col)}{ws.max_row}",
+            f"{chr(64 + quantity_col)}2:{chr(64 + quantity_col)}{max_row}",
             Rule(
                 type="expression",
                 dxf=DifferentialStyle(fill=red_fill),
@@ -222,32 +227,40 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         )
 
         # subscription_cycle not blank → Blue
+        logger.info("df_order_list: %s", df_order_list)
+        product_col = df_order_list.columns.get_loc("product_name") + 1
         sub_col = df_order_list.columns.get_loc("subscription_cycle") + 1
+        logger.info("sub_col: %s", sub_col)
+
+        product_col_letter = chr(64 + product_col)
+        sub_col_letter = chr(64 + sub_col)
+
         ws.conditional_formatting.add(
-            f"{chr(64 + sub_col)}2:{chr(64 + sub_col)}{ws.max_row}",
+            f"{product_col_letter}2:{product_col_letter}{max_row}",
             Rule(
                 type="expression",
                 dxf=DifferentialStyle(fill=blue_fill),
-                formula=[f"LEN(TRIM(${chr(64 + sub_col)}2))>0"],
+                formula=[f"LEN(TRIM(${sub_col_letter}2))>0"],
             ),
         )
 
         # order_number duplicates → Gray
-        order_col = df_order_list.columns.get_loc("order_number") + 1
-        order_numbers = df_order_list["order_number"]
-        duplicates = order_numbers[order_numbers.duplicated(keep=False)].unique()
+        serial_num_col = df_order_list.columns.get_loc("serial_number") + 1
+        serial_numbers = df_order_list["serial_number"]
+        duplicates = serial_numbers[serial_numbers.duplicated(keep=False)].unique()
 
-        for row in range(2, ws.max_row + 1):
-            cell_value = ws.cell(row=row, column=order_col).value
+        for row in range(2, max_row + 1):
+            cell_value = ws.cell(row=row, column=serial_num_col).value
             if cell_value in duplicates:
-                ws.cell(row=row, column=order_col).fill = gray_fill
+                ws.cell(row=row, column=serial_num_col).fill = gray_fill
+                ws.cell(row=row, column=serial_num_col + 1).fill = gray_fill
 
         # Apply orange fill to gift if membership_level in target list
-        gift_col = df_order_list.columns.get_loc("gift_selection") + 1
+        gift_col = df_order_list.columns.get_loc("gift") + 1
         membership_col = df_order_list.columns.get_loc("membership_level") + 1
         membership_col_letter = chr(64 + membership_col)
         ws.conditional_formatting.add(
-            f"{chr(64 + gift_col)}2:{chr(64 + gift_col)}{ws.max_row}",
+            f"{chr(64 + gift_col)}2:{chr(64 + gift_col)}{max_row}",
             Rule(
                 type="expression",
                 dxf=DifferentialStyle(fill=orange_fill),
@@ -272,7 +285,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         thin_side = Side(style="thin")  # Like xlThin in VBA
 
         # inside horizontal borders
-        for row_idx in range(2, ws.max_row):  # Exclude last row
+        for row_idx in range(2, max_row):  # Exclude last row
             for col_idx in range(1, ws.max_column + 1):
                 cell = ws.cell(row=row_idx, column=col_idx)
                 cell.border = Border(bottom=thin_side)
@@ -282,7 +295,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         box_size_counts = df_order_list["box_size"].value_counts().reset_index()
         box_size_counts.columns = ["박스", "개수"]
 
-        start_row = ws.max_row + 3
+        start_row = max_row + 3
 
         # Write headers from DataFrame
         for col_idx, col_name in enumerate(box_size_counts.columns, start=1):
@@ -326,7 +339,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         ### Apply wrap text to all cells in the data range
         for row in ws.iter_rows(
-            min_row=1, max_row=ws.max_row, min_col=1, max_col=ws.max_column
+            min_row=1, max_row=max_row, min_col=1, max_col=ws.max_column
         ):
             for cell in row:
                 cell.alignment = Alignment(wrap_text=True)
@@ -361,7 +374,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         # log
         log_set_callback("한진 사이트에 업로드할 파일 작성")
-        time.sleep(sleep_time)
+
         ########################################## ##########################################
 
         ####한진택배 사이트 열기
@@ -371,6 +384,6 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         os.startfile(f"{output_folder}")
         # log
         log_set_callback("🐶🐶🐶끝! 실행 완료🐶🐶🐶")
-        time.sleep(sleep_time)
+
     except Exception as e:
         log_set_callback(f"⚠️오류 발생: {e}")

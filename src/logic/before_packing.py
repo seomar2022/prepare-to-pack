@@ -49,26 +49,19 @@ def determine_box_size(row):
         return "Ice"
 
     total_weight_by_order = row["total_weight_by_order"]
-    brand = row["brand"]
-    quantity = row["quantity"]
 
     if total_weight_by_order < 1:
-        return 73
+        return 1
     elif total_weight_by_order < 2:
-        return 194
+        return 2
     elif total_weight_by_order < 3.8:
-        return 41
+        return 3
     elif total_weight_by_order <= 4:
-        if brand == "Royal Canin" and quantity == 2:
-            return 104
-        else:
-            return 420
-    elif total_weight_by_order <= 4.3:
-        return 104
+        return 420
     elif total_weight_by_order < 8:
-        return 170
+        return 287
     else:
-        return 266
+        return 0
 
 
 def convert_to_cafe24_product_code(order_list_pd):
