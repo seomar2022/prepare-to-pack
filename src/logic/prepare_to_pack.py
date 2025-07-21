@@ -295,6 +295,16 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         box_size_counts = df_order_list["box_size"].value_counts().reset_index()
         box_size_counts.columns = ["박스", "개수"]
 
+        custom_order = [1, 2, 3, 420, 287]
+
+        # Convert '박스' column to categorical with custom order
+        box_size_counts["박스"] = pd.Categorical(
+            box_size_counts["박스"], categories=custom_order, ordered=True
+        )
+
+        # Sort according to custom order
+        box_size_counts = box_size_counts.sort_values("박스").reset_index(drop=True)
+
         start_row = max_row + 3
 
         # Write headers from DataFrame
