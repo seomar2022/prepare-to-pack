@@ -1,124 +1,222 @@
-from pypdf import PdfWriter #pip install pypdf #pdf병합기능 쓰기 위해.
-import pandas as pd #pip install pandas openpyxl #엑셀의 데이터를 읽어오기 위해.
+import os
+from src.logic.config import get_instruction_folder, get_product_code_mapping
+from pypdf import PdfWriter
+import pandas as pd
 import re
 
-#문자열에서 중량 정보를 추출
+
+# 문자열에서 중량 정보를 추출
 def extract_weight(product_data):
     if not isinstance(product_data, str):
         return None
-    product_data = product_data.lower().replace('ml', 'g')
-    
-    match = re.search(r'(\d+(\.\d+)?)\s*(kg|g)', product_data, re.IGNORECASE)
-    
+    product_data = product_data.lower().replace("ml", "g")
+
+    match = re.search(r"(\d+(\.\d+)?)\s*(kg|g)", product_data, re.IGNORECASE)
+
     if match:
-        weight = float(match.group(1))
+        unit_weight = float(match.group(1))
         unit = match.group(3).lower()
-        
+
         # 단위가 g일 경우 kg으로 변환
-        if unit == 'g':
-            weight = weight / 1000
-        
-        return weight
+        if unit == "g":
+            unit_weight = unit_weight / 1000
+
+        return unit_weight
     else:
         return None
 
-#조건에 따라 중량 정보를 선택
-def get_final_weight(row):
-    if pd.notna(row['중량']) == False :#중량열에 데이터 없음
-        #->스마트 스토어나 톡스토어 주문건임. 상품명에서 중량 추출해야함.  
-        weight_from_name_column = extract_weight(row['상품명(한국어 쇼핑몰)'])
+
+def get_adjusted_unit_weight(row):
+    ### Select unit weight based on conditions
+    if not pd.notna(row["unit_weight"]):  # No data in the unit_weight column
+        # -> Likely Naver or Kakao. Extract weight from product name.
+        weight_from_name_column = extract_weight(row["product_name"])
         if weight_from_name_column is not None:
             return weight_from_name_column
-    
-    else: #중량열에 데이터 있음
-        #->카페24주문 건임(몇몇 연동된 상품 제외). 상품옵션열의 데이터에 중량 정보기 중량열의 데이터가 다를 때만 상품옵션 데이터 쓰기. 
-        weight_from_option_column = extract_weight(row['상품옵션'])
-        if weight_from_option_column is None: #상품옵션에 중량 정보가 없을경우
-            return row['중량']
-        else: #상품옵션에 중량 정보가 있을 경우
+
+    else:  # Data exists in the unit_weight column
+        # -> Likely Cafe24 (except for some synced products).
+        # If weight in option column differs from unit_weight column, use the option column.
+        weight_from_option_column = extract_weight(row["option"])
+        if weight_from_option_column is None:  # No weight info in the option column
+            return row["unit_weight"]
+        else:  # Weight info exists in the option column
             return weight_from_option_column
 
 
+def determine_box_size(row):
+    if "냉장배송" in row["product_name"]:
+        return "Ice"
 
-####엑셀 파일 읽어오기
-def ready_to_convert(order_list_pd): 
-    # 상품코드 열의 데이터를 문자열로 변환하고 NaN 값을 빈 문자열로 대체
-    codes = order_list_pd['상품코드'].astype(str).fillna("").tolist()
+    total_weight_by_order = row["total_weight_by_order"]
 
-    #카페24상품코드와 네이버 상품코드를 매핑한 엑셀파일 읽어오기
-    product_code_mapping = pd.read_excel(r"resources\product_code_mapping.xlsx", engine='openpyxl')
+    if total_weight_by_order < 1:
+        return 1
+    elif total_weight_by_order < 2:
+        return 2
+    elif total_weight_by_order < 3.8:
+        return 3
+    elif total_weight_by_order <= 4:
+        return 420
+    elif total_weight_by_order < 8:
+        return 287
+    else:
+        return 0
 
-    product_code_mapping['naver_code'] = product_code_mapping['naver_code'].astype(str).str.strip().str.replace('-', '')
-    product_code_mapping['kakao_code'] = product_code_mapping['kakao_code'].astype(str).str.strip().str.replace('-', '')
-    product_code_mapping['cafe24_code'] = product_code_mapping['cafe24_code'].astype(str).str.strip()
-    
-    ####상품코드를 카페24의 코드로 통일
+
+def convert_to_cafe24_product_code(order_list_pd):
+    ### Clean product code data for mapping
+    # Convert values in the 상품코드(product code) column to strings and replace NaN with empty strings
+    raw_product_codes = order_list_pd["product_code"].astype(str).fillna("").tolist()
+
+    # Load and clean product code mappings for Cafe24, Naver, and Kakao
+    df_product_code_mapping = pd.read_excel(
+        get_product_code_mapping(), engine="openpyxl"
+    )
+
+    df_product_code_mapping["naver_code"] = (
+        df_product_code_mapping["naver_code"]
+        .astype(str)
+        .str.strip()
+        .str.replace("-", "")
+    )
+    df_product_code_mapping["kakao_code"] = (
+        df_product_code_mapping["kakao_code"]
+        .astype(str)
+        .str.strip()
+        .str.replace("-", "")
+    )
+    df_product_code_mapping["cafe24_code"] = (
+        df_product_code_mapping["cafe24_code"].astype(str).str.strip()
+    )
+
+    ### Convert
     def convert_to_cafe24(code, column):
-        # 'column' 열에 'code'가 있는 행 ex) naver_code열에서 9708250509가 있는 행
-        result = product_code_mapping.query(f"{column} == @code")
-        return result['cafe24_code'].iat[0]
+        # Row where 'code' exists in the specified 'column' (e.g., 9708250509 in the 'naver_code' column)
+        matched_row = df_product_code_mapping.query(f"{column} == @code")
+        return matched_row["cafe24_code"].iat[0]
 
-    converted_codes = []
-    for code in codes:
-        if code.startswith("P00") : #카페24
-            converted_codes.append(code)
-        elif code.startswith("9") or code.startswith("1") : #네이버
-            #상품코드 맵핑된 엑셀파일에서 네이버 상품코드에 해당하는 카페24상품코드 가져오기
-            result = convert_to_cafe24(code, "naver_code")
-            converted_codes.append(result)
-        elif code.startswith("3") : #카카오
-            result = convert_to_cafe24(code, "kakao_code")
-            converted_codes.append(result)
-            
-    return converted_codes
+    # prefixes of the codes
+    prefix_to_column = {
+        "P00": None,  # cafe24. No need to convert.
+        "9": "naver_code",
+        "1": "naver_code",
+        "3": "kakao_code",
+    }
 
-#### PDF 파일 병합
-def merge_pdf(result_directory, converted_codes):
+    converted_cafe24_codes = []
+
+    for raw_product_code in raw_product_codes:
+        for prefix, column in prefix_to_column.items():
+            if raw_product_code.startswith(prefix):
+                if column is None:
+                    converted_cafe24_codes.append(raw_product_code)
+                else:
+                    mapped = convert_to_cafe24(raw_product_code, column)
+                    converted_cafe24_codes.append(mapped)
+                break
+
+    return converted_cafe24_codes
+
+
+def merge_product_instructions(output_folder, converted_codes):
     merge_pdf = PdfWriter()
     not_found_files = {}
 
-    #convert된 코드에 해당하는 설명지를 찾아 append
+    # Append the instruction sheet corresponding to each converted code
     for converted_code in converted_codes:
         try:
-            merge_pdf.append(f"resources\\product_instruction\\{converted_code}.pdf")
+            merge_pdf.append(
+                os.path.join(get_instruction_folder(), f"{converted_code}.pdf")
+            )
         except FileNotFoundError:
-            not_found_files[converted_code] = ''
+            not_found_files[converted_code] = ""
 
-    merge_pdf.write(f"{result_directory}\\product_instruction.pdf")
+    merge_pdf.write(f"{output_folder}\\product_instruction.pdf")
     merge_pdf.close()
     return not_found_files
 
-####설명지 없는 상품코드와 상품명 알려주기
-def report_result(result_directory, order_list_pd, not_found_files):
-    #설명지 없는 상품의 코드를 전채널주문리스트에서 찾고, 해당 상품의 이름을 가져와서 딕셔너리의 값으로 넣기
-    #매크로 돌리기 전의 열이름은 '상품명(한국어 쇼핑몰)' 돌린 후는 '상품명'이라서 상품명이 포함된 열을 지정
-    product_name_col = [col for col in order_list_pd.columns if "상품명" in col]
+
+### Report product codes and names for which no instruction sheet was found
+def report_missing_instructions(result_directory, order_list_pd, not_found_files):
+    # Find product codes without instruction sheets in order_list_pd, and get the corresponding product names to use as values in the dictionary
+    product_name_col = [col for col in order_list_pd.columns if "product_name" in col]
     for key in not_found_files:
-        key_in_order_list = order_list_pd.query(f"상품코드 == @key")
+        key_in_order_list = order_list_pd.query("product_code == @key")
         not_found_files[key] = key_in_order_list[product_name_col[0]].iat[0]
-        
-    
-    ####pyautogui로 프로그램 실행 결과 알려주기
+
+    # Save product codes without instruction sheets to CSV and show summary message
     if len(not_found_files) == 0:
         alert_msg = "모든 상품의 설명지를 찾았습니다!"
     else:
-        #csv파일로 저장
-        converted_codes_df = pd.DataFrame(list(not_found_files.items()), columns=['상품코드', '상품명'])
-        converted_codes_df.to_csv(f"{result_directory}\\not_found_files.csv", index=False, encoding='utf-8-sig')
-        alert_msg=f"{len(not_found_files)}개의 설명지를 찾지 못했습니다"
+        converted_codes_df = pd.DataFrame(
+            list(not_found_files.items()), columns=["상품코드", "상품명"]
+        )
+        converted_codes_df.to_csv(
+            f"{result_directory}\\not_found_files.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
+        alert_msg = f"{len(not_found_files)}개의 설명지를 찾지 못했습니다"
         print(alert_msg)
 
-def match_to_cafe24_example(result_directory, hanjin_path):
-    ####배송리스트 파일 읽어오기
-    delivery_list = pd.read_excel(hanjin_path, engine='openpyxl')
 
-    ####카페24 양식에 맞게 수정한 파일 만들기
-    try:
-        # B열의 데이터까지만 남겨두기.
-        upload_to_cafe24 = delivery_list.iloc[:, :2]
+### Determine gift type based on priority: gift_selection > pet_type > product_name
+def assign_gift(row):
+    gift_selection = (
+        ""
+        if pd.isna(row.get("gift_selection"))
+        else str(row.get("gift_selection")).strip()
+    )
+    pet_type = "" if pd.isna(row.get("pet_type")) else str(row.get("pet_type")).strip()
+    product_name = (
+        "" if pd.isna(row.get("product_name")) else str(row.get("product_name")).strip()
+    )
 
-        # 수정된 내용을 새로운 CSV 파일로 저장
-        upload_to_cafe24.to_csv(rf"{result_directory}\excel_sample_old.csv", index=False, encoding='utf-8-sig')
-    
-    except Exception as e:
-        print(f"파일 편집 중 오류가 발생했습니다: {e}")
+    if "강아지용" in gift_selection:
+        return "독"
+    elif "고양이용" in gift_selection:
+        return "캣"
+    elif gift_selection == "" and pet_type:
+        return pet_type
+    elif gift_selection == "" and pet_type == "":
+        if "독" in product_name:
+            return "독"
+        elif "캣" in product_name:
+            return "캣"
+    return "?"
+
+
+# Define a function to restructure each group
+def flatten_order_items_by_order_number(df):
+    """
+    Restructure the DataFrame by grouping rows by 'order_number' and
+    flattening product information into a single row per order.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame with order data.
+    Returns:
+        pd.DataFrame: A restructured DataFrame with one row per order_number.
+    """
+    grouped = df.groupby("order_number")
+    base_columns = df.columns.tolist()
+
+    def restructure(group):
+        # Get the first row's base info
+        first_row = group.iloc[0][base_columns].tolist()
+        rest = []
+        for _, row in group.iloc[1:].iterrows():
+            rest.extend([row["product_name_with_option"], row["quantity"]])
+        return first_row + rest
+
+    # Apply restructure and convert to DataFrame
+    restructured_data = grouped.apply(restructure).apply(pd.Series)
+
+    # Generate column names
+    extra_cols = []
+    max_extra = restructured_data.shape[1] - len(base_columns)
+    for i in range(0, max_extra, 2):
+        extra_cols.extend(["product_name_with_option", "quantity"])
+
+    restructured_data.columns = base_columns + extra_cols
+    return restructured_data

@@ -1,73 +1,190 @@
-# gui.py
+import subprocess
 import tkinter as tk
-from tkinter import PhotoImage, StringVar
+from tkinter import Text, Scrollbar, END, filedialog, messagebox
 import threading
-from logic.module import *
+from src.logic.config import save_download_path, get_instruction_folder
+from src.logic.module import resource_path
+
 
 class GUI:
     def __init__(self, root, on_before_packing, on_upload_tracking):
         self.root = root
-        self.on_before_packing = on_before_packing  # 로직 함수 연결
-        self.on_upload_tracking = on_upload_tracking  # 로직 함수 연결
+        self.on_before_packing = on_before_packing
+        self.on_upload_tracking = on_upload_tracking
 
         self.font_size = 14
-        self.log_text = StringVar()  # 로그 텍스트를 관리하는 변수
-        self.log_text.set("")  # 초기값 설정
-
-        self.setup_ui()  # UI 생성
+        self.setup_ui()
 
     def setup_ui(self):
-        """GUI를 초기화하는 메서드"""
-        self.root.title("Prepare to Pack")
-        self.root.geometry("350x450")
-        self.root.attributes('-topmost', True)
+        """Initialize the GUI layout"""
+        self.root.title("LALA Pet Mall - 출고 준비 프로그램")
+        self.root.geometry("400x600")
+        self.root.configure(bg="#fdfaf4")
+        self.root.resizable(False, False)
+        self.root.attributes("-topmost", True)
+        self.root.iconbitmap(resource_path("resources/img/favicon.ico"))
 
-        #Add margin
-        frame = tk.Frame(self.root, padx=20, pady=20)
-        frame.pack()
+        # Main Centering Frame
+        main_frame = tk.Frame(self.root, bg="#fdfaf4")
+        main_frame.pack(fill="both", expand=True)
 
-        # 타이틀
-        label = tk.Label(self.root, text="출고 준비 프로그램", font=("none", self.font_size, "bold"))
-        label.pack(pady=10) # set title on root
+        ########################################## Title Frame ##########################################
+        title_frame = tk.Frame(main_frame, bg="#fdfaf4")
+        title_frame.pack(pady=(20, 10), anchor="center")
 
-        # 버튼 프레임 생성
-        button_frame = tk.Frame(self.root)
-        button_frame.pack(pady=10)
+        ### title
+        title = tk.Label(
+            title_frame,
+            text="LALA Pet Mall 출고 준비 프로그램",
+            font=("Noto Sans KR", self.font_size + 2, "bold"),
+            bg="#fdfaf4",
+            fg="#2d4831",
+        )
+        title.pack(side="left")
 
-        # 버튼 이미지
-        before_packing_image = PhotoImage(file="resources/img/package-box.png")
-        upload_image = PhotoImage(file="resources/img/document.png")
-        info_image = PhotoImage(file="resources/img/info.png")
+        ### Settings
+        self.gear_icon = tk.PhotoImage(file=resource_path("resources/img/gear.png"))
+        settings_button = tk.Button(
+            title_frame,
+            image=self.gear_icon,
+            command=self.set_download_folder,
+            bg="#fdfaf4",
+            bd=0,
+            activebackground="#fdfaf4",
+            cursor="hand2",
+        )
+        settings_button.pack(side="left", padx=5)
 
+        ### product_instruction
+        instruction_folder = get_instruction_folder()
 
-        # 포장 준비 버튼
-      # before_packing_button = tk.Button(button_frame, image=before_packing_image, command=on_before_packing_button_click)
-        before_packing_button = tk.Button(button_frame, image=before_packing_image, command=lambda: threading.Thread(target=self.on_before_packing, args=(self.update_log, self.get_log)).start())
-        before_packing_button.image = before_packing_image
-        before_packing_button.pack(side="left", padx=10)
-        ToolTip(before_packing_button, "cafe24에서 '출고준비통합'양식으로 파일을 다운로드 받은 후 이 버튼을 클릭해 주세요.")
+        self.document_icon = tk.PhotoImage(
+            file=resource_path("resources/img/document.png")
+        )
+        instruction_button = tk.Button(
+            title_frame,
+            image=self.document_icon,
+            command=lambda: subprocess.Popen(f'explorer "{instruction_folder}"'),
+            bg="#fdfaf4",
+            bd=0,
+            activebackground="#fdfaf4",
+            cursor="hand2",
+        )
+        instruction_button.pack(side="left", padx=5)
 
+        ########################################## Step 1 Frame ##########################################
+        step1_frame = tk.Frame(main_frame, bg="#fdfaf4")
+        step1_frame.pack(pady=(10, 5))
 
-        # 송장 업로드 버튼
-        upload_tracking_number_button = tk.Button(button_frame, image=upload_image, command=lambda: threading.Thread(target=self.on_upload_tracking, args=(self.update_log, )).start())
-        upload_tracking_number_button.image = upload_image
-        upload_tracking_number_button.pack(side="right", padx=10)
-        ToolTip(upload_tracking_number_button, "한진택배에서 '원본파일'을 다운로드 받은 후 이 버튼을 클릭해 주세요.")
-        # info 버튼
-        info_button = tk.Button(self.root, image=info_image)
-        info_button.image = info_image
-        info_button.pack(side="bottom", pady=20)
-        ToolTip(info_button, "-cafe24 엑셀파일 다운 양식 수정: settings\\header.csv\n-인터넷에서 다운 받은 파일이 있는 폴더 경로 지정: settings\\path.csv\n-설명지 추가: \\resources\\product_instruction\n-image: Flaticon.com\n-기타문의:seomar2022@gmail.com")
+        tk.Label(
+            step1_frame,
+            text="[Step 1] 주문서 정리하기",
+            font=("Noto Sans KR", self.font_size, "bold"),
+            bg="#fdfaf4",
+            fg="#2d4831",
+        ).pack()
 
+        tk.Label(
+            step1_frame,
+            text="cafe24에서 '출고준비통합'양식으로 파일을 다운로드 받은 후 아래 버튼을 클릭해 주세요.",
+            font=("Noto Sans KR", self.font_size - 3),
+            bg="#fdfaf4",
+            wraplength=350,
+        ).pack(pady=(0, 10))
 
+        tk.Button(
+            step1_frame,
+            text="주문서 정리",
+            command=lambda: threading.Thread(
+                target=self.on_before_packing, args=(self.append_log, self.get_log)
+            ).start(),
+            font=("Noto Sans KR", self.font_size - 1, "bold"),
+            bg="#4f785c",
+            fg="white",
+            width=25,
+            height=2,
+            bd=0,
+            activebackground="#3a5c46",
+            cursor="hand2",
+        ).pack()
 
-        # 로그 레이블
-        log_label = tk.Label(self.root, textvariable=self.log_text, justify="left", anchor="nw", font=self.font_size, wraplength=300)
-        log_label.pack(pady=10, padx=20)
+        ########################################## Step 2 Frame ##########################################
+        step2_frame = tk.Frame(main_frame, bg="#fdfaf4")
+        step2_frame.pack(pady=(20, 5))
 
-    def update_log(self, message):
-        """로그 텍스트를 업데이트하는 메서드"""
-        self.log_text.set(message)
+        tk.Label(
+            step2_frame,
+            text="[Step 2] 송장번호 입력 및 업로드",
+            font=("Noto Sans KR", self.font_size, "bold"),
+            bg="#fdfaf4",
+            fg="#2d4831",
+        ).pack()
+
+        tk.Label(
+            step2_frame,
+            text="한진택배에서 '원본파일'을 다운로드 받은 후 아래 버튼을 클릭해 주세요.",
+            font=("Noto Sans KR", self.font_size - 3),
+            bg="#fdfaf4",
+            wraplength=350,
+        ).pack(pady=(0, 10))
+
+        tk.Button(
+            step2_frame,
+            text="송장 업로드하기",
+            command=lambda: threading.Thread(
+                target=self.on_upload_tracking, args=(self.append_log,)
+            ).start(),
+            font=("Noto Sans KR", self.font_size - 1, "bold"),
+            bg="#4f785c",
+            fg="white",
+            width=25,
+            height=2,
+            bd=0,
+            activebackground="#3a5c46",
+            cursor="hand2",
+        ).pack()
+
+        ########################################## Log Frame ##########################################
+        log_frame = tk.Frame(main_frame, bg="#fdfaf4")
+        log_frame.pack(pady=(20, 10), padx=20, fill="both", expand=True)
+
+        tk.Label(
+            log_frame,
+            text="실시간 작업 로그",
+            font=("Noto Sans KR", self.font_size - 1, "bold"),
+            bg="#fdfaf4",
+            fg="#2d4831",
+        ).pack(anchor="w")
+
+        text_frame = tk.Frame(log_frame)
+        text_frame.pack(fill="both", expand=True)
+
+        self.log_widget = Text(
+            text_frame,
+            font=("Noto Sans KR", self.font_size - 2),
+            height=8,
+            wrap="word",
+            bg="#ffffff",
+            bd=1,
+            relief="solid",
+        )
+        self.log_widget.pack(side="left", fill="both", expand=True)
+
+        scrollbar = Scrollbar(text_frame, command=self.log_widget.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.log_widget.config(yscrollcommand=scrollbar.set)
+
+    def append_log(self, message):
+        self.log_widget.insert(END, message + "\n")
+        self.log_widget.see(END)
+
     def get_log(self):
-        return self.log_text.get()
+        return self.log_widget.get("1.0", END)
 
+    def set_download_folder(self):
+        folder = filedialog.askdirectory(title="다운로드 폴더 선택")
+        if folder:
+            save_download_path(folder)
+            messagebox.showinfo(
+                "저장됨", f"다운로드 폴더:\n{folder} 로 설정되었습니다."
+            )
