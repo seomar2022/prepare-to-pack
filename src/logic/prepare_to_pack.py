@@ -170,6 +170,11 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             df_order_list[col] = df_order_list[col].where(
                 ~df_order_list["serial_number"].duplicated(), ""
             )
+        logger.info("Clean duplicated value")
+
+        # If 'pickup' column contains '방문수령', replace it with 'O'
+        df_order_list.loc[df_order_list["pickup"] == "방문수령", "pickup"] = "O"
+        logger.info("Reorganize pickup column")
 
         ### Reorder column
         column_order = [
@@ -185,12 +190,12 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "recipient_address",
             "delivery_message",
             "box_size",
+            "pickup",
             "subscription_cycle",
-            "gift_selection",
+            # "gift_selection",
             "membership_level",
         ]
         df_order_list[column_order].to_excel(order_list_path, index=False)
-        logger.info("df_order_list[column_order]: ", df_order_list[column_order])
         ########################################## Document design for order list(fill the color) ##########################################
 
         df_order_list = pd.read_excel(order_list_path)
@@ -331,6 +336,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "recipient_address": 28,
             "delivery_message": 14,
             "box_size": 5,
+            "pickup": 3,
         }
 
         for col in df_order_list.columns.to_list():

@@ -9,7 +9,7 @@ KOR_TO_ENG_COLUMN_MAP = {
     "상품옵션": "option",
     "수량": "quantity",
     "수령인": "recipient_name",
-    "주문서추가항목01_사은품 선택 (공통입력사항)": "gift_selection",
+    "주문서추가항목01_방문수령 (공통입력사항)": "pickup",
     "옵션+판매가": "price",
     "주문 상태": "order_status",
     "수령인 주소(전체)": "recipient_address",
@@ -36,7 +36,7 @@ ENG_TO_KOR_COLUMN_MAP = {
     "option": "옵션",  # 상품옵션 → 옵션
     "quantity": "수량",
     "recipient_name": "수령인",
-    "gift_selection": "주문서추가항목",  # 주문서추가항목01_사은품 선택 → 주문서추가항목
+    "pickup": "픽업",  # 주문서추가항목01_방문수령 (공통입력사항) → 방문수령
     "price": "가격",  # 옵션+판매가 → 가격
     "order_status": "주문 상태",
     "recipient_address": "주소",  # 수령인 주소(전체) → 주소

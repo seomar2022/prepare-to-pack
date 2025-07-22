@@ -3,6 +3,9 @@ from src.logic.config import get_instruction_folder, get_product_code_mapping
 from pypdf import PdfWriter
 import pandas as pd
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # 문자열에서 중량 정보를 추출
@@ -163,28 +166,20 @@ def report_missing_instructions(result_directory, order_list_pd, not_found_files
 
 ### Determine gift type based on priority: gift_selection > pet_type > product_name
 def assign_gift(row):
-    gift_selection = (
-        ""
-        if pd.isna(row.get("gift_selection"))
-        else str(row.get("gift_selection")).strip()
-    )
     pet_type = "" if pd.isna(row.get("pet_type")) else str(row.get("pet_type")).strip()
     product_name = (
         "" if pd.isna(row.get("product_name")) else str(row.get("product_name")).strip()
     )
 
-    if "강아지용" in gift_selection:
-        return "독"
-    elif "고양이용" in gift_selection:
-        return "캣"
-    elif gift_selection == "" and pet_type:
-        return pet_type
-    elif gift_selection == "" and pet_type == "":
+    if pet_type == "":
         if "독" in product_name:
             return "독"
         elif "캣" in product_name:
             return "캣"
-    return "?"
+        else:
+            return "?"
+    else:
+        return pet_type
 
 
 # Define a function to restructure each group
