@@ -8,14 +8,12 @@ from src.logic.before_packing import (
     convert_to_cafe24_product_code,
     merge_product_instructions,
     report_missing_instructions,
-    assign_gift,
     determine_box_size,
     flatten_order_items_by_order_number,
 )
 import pandas as pd
 import os
 import webbrowser
-import time  # GUI에서 멀티스레드 사용하기 위해
 from datetime import datetime  # 폴더이름에 현재 날짜 넣기 위해
 
 from pathlib import Path
@@ -102,9 +100,11 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         ########################################## Print out product instruction ##########################################
         converted_cafe24_codes = convert_to_cafe24_product_code(df_order_list)
+        logger.info("converted_cafe24_codes")
         not_found_files = merge_product_instructions(
             output_folder, converted_cafe24_codes
         )
+        logger.info("product instructions merged")
         report_missing_instructions(output_folder, df_order_list, not_found_files)
 
         # log
@@ -146,10 +146,6 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         logger.info("Serial numbers generated")
 
-        ### Determine gift type
-        df_order_list["gift"] = df_order_list.apply(assign_gift, axis=1)
-        logger.info("Gift type determined")
-
         # log
         log_set_callback("주문리스트의 일련번호 입력")
 
@@ -159,7 +155,6 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "order_number",
             "orderer_name",
             "recipient_name",
-            "gift",
             "recipient_address",
             "delivery_message",
             "box_size",
@@ -185,14 +180,12 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "option",
             "quantity",
             "recipient_name",
-            "gift",
             "price",
             "recipient_address",
             "delivery_message",
             "box_size",
             "pickup",
             "subscription_cycle",
-            # "gift_selection",
             "membership_level",
         ]
         df_order_list[column_order].to_excel(order_list_path, index=False)
@@ -214,9 +207,6 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         blue_fill = PatternFill(
             start_color="C0E6F5", end_color="C0E6F5", fill_type="solid"
         )  # RGB(192,230,245)
-        orange_fill = PatternFill(
-            start_color="FECDA8", end_color="FECDA8", fill_type="solid"
-        )
 
         ### Apply conditional formatting
         # quantity >= 2 → Red
@@ -260,30 +250,11 @@ def prepare_to_pack(log_set_callback, log_get_callback):
                 ws.cell(row=row, column=serial_num_col).fill = gray_fill
                 ws.cell(row=row, column=serial_num_col + 1).fill = gray_fill
 
-        # Apply orange fill to gift if membership_level in target list
-        gift_col = df_order_list.columns.get_loc("gift") + 1
-        membership_col = df_order_list.columns.get_loc("membership_level") + 1
-        membership_col_letter = chr(64 + membership_col)
-        ws.conditional_formatting.add(
-            f"{chr(64 + gift_col)}2:{chr(64 + gift_col)}{max_row}",
-            Rule(
-                type="expression",
-                dxf=DifferentialStyle(fill=orange_fill),
-                formula=[
-                    f'=OR(${membership_col_letter}2="SILVER", ${membership_col_letter}2="LALA", ${membership_col_letter}2="FAMILY")'
-                ],
-            ),
-        )
         ########################################## Document design for order list ##########################################
         price_col = df_order_list.columns.get_loc("price") + 1
         for row in ws.iter_rows(min_row=2, min_col=price_col, max_col=price_col):
             for cell in row:
                 cell.number_format = "#,##0"
-
-        gift_col = df_order_list.columns.get_loc("gift") + 1
-        for row in ws.iter_rows(min_row=2, min_col=gift_col, max_col=gift_col):
-            for cell in row:
-                cell.alignment = Alignment(horizontal="center", vertical="center")
 
         ### Border
         # Define border styles
@@ -328,10 +299,9 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "order_number": 9,
             "orderer_name": 7,
             "product_name": 38,
-            "option": 8,
+            "option": 16,
             "quantity": 4,
             "recipient_name": 7,
-            "gift": 7,
             "price": 8,
             "recipient_address": 28,
             "delivery_message": 14,
@@ -380,7 +350,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         # Set page orientation to landscape
         ws.page_setup.orientation = ws.ORIENTATION_LANDSCAPE
 
-        ### Save styled workbookr
+        ### Save styled workbook
         wb.save(order_list_path)
 
         ########################################## Multiple items process for hanjin list ##########################################

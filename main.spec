@@ -7,14 +7,14 @@ from PyInstaller.utils.win32.versioninfo import (
 
 version = VSVersionInfo(
     ffi=FixedFileInfo(
-        filevers=(2, 1, 0, 0),
-        prodvers=(2, 1, 0, 0),
+        filevers=(2, 2, 0, 0),
+        prodvers=(2, 2, 0, 0),
         mask=0x3f,
         flags=0x0,
         OS=0x40004,
         fileType=0x1,
         subtype=0x0,
-        date=(2025, 722)
+        date=(2025, 723)
     ),
     kids=[]
 )

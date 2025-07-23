@@ -54,5 +54,4 @@ ENG_TO_KOR_COLUMN_MAP = {
     "product_name_with_option": "상품명(옵션)",
     "box_size": "박스",
     "serial_number": "연번",
-    "gift": "사은품",
 }
