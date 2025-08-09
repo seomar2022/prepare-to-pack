@@ -3,6 +3,9 @@ from src.logic.config import get_instruction_folder, get_product_code_mapping
 from pypdf import PdfWriter
 import pandas as pd
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # 문자열에서 중량 정보를 추출
@@ -65,15 +68,23 @@ def determine_box_size(row):
 
 
 def convert_to_cafe24_product_code(order_list_pd):
+    logger.info("Starting conversion to Cafe24 product codes.")
+
     ### Clean product code data for mapping
-    # Convert values in the 상품코드(product code) column to strings and replace NaN with empty strings
+    logger.info("Cleaning product code data...")
     raw_product_codes = order_list_pd["product_code"].astype(str).fillna("").tolist()
+    logger.info(f"Number of product codes to convert: {len(raw_product_codes)}")
 
     # Load and clean product code mappings for Cafe24, Naver, and Kakao
+    logger.info("Loading product code mapping file...")
     df_product_code_mapping = pd.read_excel(
         get_product_code_mapping(), engine="openpyxl"
     )
+    logger.info(
+        f"Product code mapping file loaded: {len(df_product_code_mapping)} rows"
+    )
 
+    logger.info("Cleaning mapping columns (naver_code, kakao_code, cafe24_code)...")
     df_product_code_mapping["naver_code"] = (
         df_product_code_mapping["naver_code"]
         .astype(str)
@@ -89,10 +100,11 @@ def convert_to_cafe24_product_code(order_list_pd):
     df_product_code_mapping["cafe24_code"] = (
         df_product_code_mapping["cafe24_code"].astype(str).str.strip()
     )
+    logger.info("Mapping columns cleaned successfully.")
 
     ### Convert
     def convert_to_cafe24(code, column):
-        # Row where 'code' exists in the specified 'column' (e.g., 9708250509 in the 'naver_code' column)
+        logger.info(f"Converting code '{code}' using column '{column}'")
         matched_row = df_product_code_mapping.query(f"{column} == @code")
         return matched_row["cafe24_code"].iat[0]
 
@@ -106,7 +118,9 @@ def convert_to_cafe24_product_code(order_list_pd):
 
     converted_cafe24_codes = []
 
+    logger.info("Starting product code conversion loop...")
     for raw_product_code in raw_product_codes:
+        logger.info(f"Processing code: {raw_product_code}")
         for prefix, column in prefix_to_column.items():
             if raw_product_code.startswith(prefix):
                 if column is None:
@@ -139,15 +153,24 @@ def merge_product_instructions(output_folder, converted_codes):
 
 ### Report product codes and names for which no instruction sheet was found
 def report_missing_instructions(result_directory, order_list_pd, not_found_files):
-    # Find product codes without instruction sheets in order_list_pd, and get the corresponding product names to use as values in the dictionary
-    product_name_col = [col for col in order_list_pd.columns if "product_name" in col]
+    # Find product codes without instruction sheets in product_code_mapping_pd, and get the corresponding product names to use as values in the dictionary
+    logger.info("here")
+    product_code_mapping_pd = pd.read_excel(
+        get_product_code_mapping(), engine="openpyxl"
+    )
+
+    product_name_col = [
+        col for col in product_code_mapping_pd.columns if "관리용 상품명" in col
+    ]
+
     for key in not_found_files:
-        key_in_order_list = order_list_pd.query("product_code == @key")
+        key_in_order_list = product_code_mapping_pd.query("cafe24_code == @key")
         not_found_files[key] = key_in_order_list[product_name_col[0]].iat[0]
+    logger.info("ss")
 
     # Save product codes without instruction sheets to CSV and show summary message
     if len(not_found_files) == 0:
-        alert_msg = "모든 상품의 설명지를 찾았습니다!"
+        logger.info("Found instruction sheets for all products")
     else:
         converted_codes_df = pd.DataFrame(
             list(not_found_files.items()), columns=["상품코드", "상품명"]
@@ -157,34 +180,7 @@ def report_missing_instructions(result_directory, order_list_pd, not_found_files
             index=False,
             encoding="utf-8-sig",
         )
-        alert_msg = f"{len(not_found_files)}개의 설명지를 찾지 못했습니다"
-        print(alert_msg)
-
-
-### Determine gift type based on priority: gift_selection > pet_type > product_name
-def assign_gift(row):
-    gift_selection = (
-        ""
-        if pd.isna(row.get("gift_selection"))
-        else str(row.get("gift_selection")).strip()
-    )
-    pet_type = "" if pd.isna(row.get("pet_type")) else str(row.get("pet_type")).strip()
-    product_name = (
-        "" if pd.isna(row.get("product_name")) else str(row.get("product_name")).strip()
-    )
-
-    if "강아지용" in gift_selection:
-        return "독"
-    elif "고양이용" in gift_selection:
-        return "캣"
-    elif gift_selection == "" and pet_type:
-        return pet_type
-    elif gift_selection == "" and pet_type == "":
-        if "독" in product_name:
-            return "독"
-        elif "캣" in product_name:
-            return "캣"
-    return "?"
+        logger.info(f"Could not find {len(not_found_files)} instruction sheets.")
 
 
 # Define a function to restructure each group
