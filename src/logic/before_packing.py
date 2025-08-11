@@ -67,46 +67,30 @@ def determine_box_size(row):
         return 0
 
 
-def convert_to_cafe24_product_code(order_list_pd):
-    logger.info("Starting conversion to Cafe24 product codes.")
-
+# Vectorized - A way of processing data all at once, applying operations to the entire array/series without using loops.
+def convert_to_cafe24_product_code(order_list_df):
     ### Clean product code data for mapping
     logger.info("Cleaning product code data...")
-    raw_product_codes = order_list_pd["product_code"].astype(str).fillna("").tolist()
+
+    raw_product_codes = order_list_df["product_code"].astype(str).fillna("").tolist()
     logger.info(f"Number of product codes to convert: {len(raw_product_codes)}")
 
     # Load and clean product code mappings for Cafe24, Naver, and Kakao
     logger.info("Loading product code mapping file...")
-    df_product_code_mapping = pd.read_excel(
-        get_product_code_mapping(), engine="openpyxl"
-    )
-    logger.info(
-        f"Product code mapping file loaded: {len(df_product_code_mapping)} rows"
+    product_code_mapping_df = pd.read_excel(
+        get_product_code_mapping(), engine="openpyxl", dtype=str
     )
 
     logger.info("Cleaning mapping columns (naver_code, kakao_code, cafe24_code)...")
-    df_product_code_mapping["naver_code"] = (
-        df_product_code_mapping["naver_code"]
-        .astype(str)
-        .str.strip()
-        .str.replace("-", "")
-    )
-    df_product_code_mapping["kakao_code"] = (
-        df_product_code_mapping["kakao_code"]
-        .astype(str)
-        .str.strip()
-        .str.replace("-", "")
-    )
-    df_product_code_mapping["cafe24_code"] = (
-        df_product_code_mapping["cafe24_code"].astype(str).str.strip()
-    )
+    # Clean mapping columns
+    for col in ["naver_code", "kakao_code", "cafe24_code"]:
+        product_code_mapping_df[col] = (
+            product_code_mapping_df[col]
+            .astype(str)
+            .str.strip()
+            .str.replace("-", "", regex=False)
+        )
     logger.info("Mapping columns cleaned successfully.")
-
-    ### Convert
-    def convert_to_cafe24(code, column):
-        logger.info(f"Converting code '{code}' using column '{column}'")
-        matched_row = df_product_code_mapping.query(f"{column} == @code")
-        return matched_row["cafe24_code"].iat[0]
 
     # prefixes of the codes
     prefix_to_column = {
@@ -116,21 +100,61 @@ def convert_to_cafe24_product_code(order_list_pd):
         "3": "kakao_code",
     }
 
-    converted_cafe24_codes = []
+    converted_codes = order_list_df["product_code"].astype(str).copy()
+    missing_matches = []
 
-    logger.info("Starting product code conversion loop...")
-    for raw_product_code in raw_product_codes:
-        logger.info(f"Processing code: {raw_product_code}")
-        for prefix, column in prefix_to_column.items():
-            if raw_product_code.startswith(prefix):
-                if column is None:
-                    converted_cafe24_codes.append(raw_product_code)
-                else:
-                    mapped = convert_to_cafe24(raw_product_code, column)
-                    converted_cafe24_codes.append(mapped)
-                break
+    # df.loc[]: Selects rows by index label and columns by name (label-based indexing, not position-based).
+    # df.loc[{Boolean mask (Series)}]: Pandas matches the mask’s index labels with the DataFrame’s index, then selects only rows where the mask is True, regardless of order.
+    for prefix, column in prefix_to_column.items():
+        mask = converted_codes.str.startswith(prefix)
+        if not mask.any():
+            continue
 
-    return converted_cafe24_codes
+        if column is None:
+            continue  # Already cafe24, no change
+
+        # Remove duplicate keys from the mapping table and select only the necessary columns
+        # df[[]]→ select multiple columns
+        # subset=[column] → When determining duplicates, only consider values in the specified column (ignore other columns)
+        # keep="last" → If duplicates exist, keep only the last occurrence and drop the rest
+        right_df = product_code_mapping_df[[column, "cafe24_code"]].drop_duplicates(
+            subset=[column], keep="last"
+        )
+
+        ### Merge for vectorized mapping
+        # left_df.merge(
+        #     right_df,
+        #     left_on="column",
+        #     right_on="column2"
+        # )
+        temp_df = order_list_df.loc[mask, ["product_code"]].merge(
+            right_df,
+            left_on="product_code",
+            right_on=column,
+            how="left",
+        )
+        # logger.info(f"right_df: {right_df}")
+        # logger.info(f"temp_df: {temp_df}")
+        # logger.info(f'temp_df["cafe24_code"]: {temp_df["cafe24_code"]}')
+
+        # For unmapped entries, fill with the original code and assign based on position rather than index alignment
+        # Using .to_numpy() bypasses Pandas index alignment, allowing assignment strictly by position, and is also lighter in terms of performance.
+        fallback = order_list_df.loc[mask, "product_code"].to_numpy()
+        filled = temp_df["cafe24_code"].fillna(pd.Series(fallback, index=temp_df.index))
+        converted_codes.loc[mask] = filled.to_numpy()
+
+        # logger.info(f"mask: {mask}")
+        # logger.info(f"converted_codes: {converted_codes}")
+        # logger.info(f"converted_codes[mask]: {converted_codes[mask]}")
+
+        # Track missing matches
+        missing_rows = temp_df[temp_df["cafe24_code"].isna()]
+        if not missing_rows.empty:
+            missing_matches.extend(missing_rows["product_code"].tolist())
+
+    logger.info(f"Conversion completed. Total unmatched codes: {len(missing_matches)}")
+
+    return converted_codes.tolist(), missing_matches
 
 
 def merge_product_instructions(output_folder, converted_codes):
@@ -152,35 +176,29 @@ def merge_product_instructions(output_folder, converted_codes):
 
 
 ### Report product codes and names for which no instruction sheet was found
-def report_missing_instructions(result_directory, order_list_pd, not_found_files):
-    # Find product codes without instruction sheets in product_code_mapping_pd, and get the corresponding product names to use as values in the dictionary
-    logger.info("here")
-    product_code_mapping_pd = pd.read_excel(
-        get_product_code_mapping(), engine="openpyxl"
-    )
-
-    product_name_col = [
-        col for col in product_code_mapping_pd.columns if "관리용 상품명" in col
-    ]
-
-    for key in not_found_files:
-        key_in_order_list = product_code_mapping_pd.query("cafe24_code == @key")
-        not_found_files[key] = key_in_order_list[product_name_col[0]].iat[0]
-    logger.info("ss")
-
-    # Save product codes without instruction sheets to CSV and show summary message
+def report_missing_instructions(result_directory, order_list_df, not_found_files):
     if len(not_found_files) == 0:
         logger.info("Found instruction sheets for all products")
-    else:
-        converted_codes_df = pd.DataFrame(
-            list(not_found_files.items()), columns=["상품코드", "상품명"]
-        )
-        converted_codes_df.to_csv(
-            f"{result_directory}\\not_found_files.csv",
-            index=False,
-            encoding="utf-8-sig",
-        )
-        logger.info(f"Could not find {len(not_found_files)} instruction sheets.")
+        return
+
+    # .query("col_name == @variable_from_python")
+    # This returns a new DataFrame with only the rows where the cafe24_code column equals the value in the converted_code variable.
+    for product_code in not_found_files:
+        key_in_order_list = order_list_df.query("product_code == @product_code")
+        logger.info(key_in_order_list)
+
+        not_found_files[product_code] = key_in_order_list["product_name"].iat[0]
+
+    # Save product codes without instruction sheets to CSV and show summary message
+    no_instruction_sheets_df = pd.DataFrame(
+        list(not_found_files.items()), columns=["상품코드", "상품명"]
+    )
+    no_instruction_sheets_df.to_csv(
+        f"{result_directory}\\not_found_files.csv",
+        index=False,
+        encoding="utf-8-sig",
+    )
+    logger.info(f"Could not find {len(not_found_files)} instruction sheets.")
 
 
 # Define a function to restructure each group

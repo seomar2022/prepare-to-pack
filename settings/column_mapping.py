@@ -25,6 +25,7 @@ KOR_TO_ENG_COLUMN_MAP = {
     "수령인 휴대전화": "recipient_mobile",
     "수령인 우편번호": "recipient_zip_code",
     "주문상품명(옵션포함)": "product_name_with_option",
+    "상품명(관리용)": "internal_product_name",
 }
 
 ENG_TO_KOR_COLUMN_MAP = {
