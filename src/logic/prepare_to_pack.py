@@ -54,7 +54,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             download_from_internet_path,
             "lalapetmall_" + datetime.today().strftime("%Y%m%d") + "_",
         )
-        df_raw_data = pd.read_csv(download_from_cafe24_path)
+        raw_data_df = pd.read_csv(download_from_cafe24_path)
 
         # log
         log_set_callback("다운로드 받은 파일 검색")
@@ -66,8 +66,8 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         order_list_header_list = get_column_from_csv(
             r"settings\header.csv", "order_list_header"
         )
-        logger.info("Get columns from settings\header.csv")
-        df_order_list = df_raw_data[order_list_header_list].rename(
+        logger.info("Get columns from settings\\header.csv")
+        order_list_df = raw_data_df[order_list_header_list].rename(
             columns=KOR_TO_ENG_COLUMN_MAP
         )
         logger.info("Split into three files: 1. order list")
@@ -77,9 +77,17 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         hanjin_header_list = get_column_from_csv(
             r"settings\header.csv", "hanjin_header"
         )
-        df_hanjin_list = df_raw_data[hanjin_header_list].rename(
+        hanjin_list_df = raw_data_df[hanjin_header_list].rename(
             columns=KOR_TO_ENG_COLUMN_MAP
         )
+
+        # Replace product_name with internal_product_name if not NaN
+        hanjin_list_df.loc[
+            hanjin_list_df["product_name_with_option"].str.contains("개인", na=False),
+            "product_name_with_option",
+        ] = hanjin_list_df["internal_product_name"]
+        hanjin_list_df = hanjin_list_df.drop(columns=["internal_product_name"])
+
         logger.info("Split into three files: 2. hanjin")
 
         # Cafe24 upload file
@@ -87,7 +95,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         cafe24_upload_header_list = get_column_from_csv(
             r"settings\header.csv", "cafe24_upload"
         )
-        df_cafe24_upload = df_raw_data[cafe24_upload_header_list]
+        df_cafe24_upload = raw_data_df[cafe24_upload_header_list]
         df_cafe24_upload.to_csv(
             cafe24_upload_path,
             index=False,
@@ -99,13 +107,20 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         log_set_callback("헤더명에 따라 세 개의 파일로 분리")
 
         ########################################## Print out product instruction ##########################################
-        converted_cafe24_codes = convert_to_cafe24_product_code(df_order_list)
+        converted_cafe24_codes, missing_codes = convert_to_cafe24_product_code(
+            order_list_df
+        )
+        order_list_df["product_code"] = converted_cafe24_codes
         logger.info("converted_cafe24_codes")
+
+        if missing_codes:
+            logger.warning("Unmatched product codes: %s", missing_codes)
+
         not_found_files = merge_product_instructions(
             output_folder, converted_cafe24_codes
         )
         logger.info("product instructions merged")
-        report_missing_instructions(output_folder, df_order_list, not_found_files)
+        report_missing_instructions(output_folder, order_list_df, not_found_files)
 
         # log
         log_set_callback("상품 설명지 병합")
@@ -113,36 +128,36 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         ########################################## Data Transformation(Determine box size) ##########################################
         #### Adjust weight data
-        df_order_list["unit_weight"] = df_order_list.apply(
+        order_list_df["unit_weight"] = order_list_df.apply(
             get_adjusted_unit_weight, axis=1
         )
 
-        df_order_list["item_total_weight"] = (
-            df_order_list["unit_weight"] * df_order_list["quantity"]
+        order_list_df["item_total_weight"] = (
+            order_list_df["unit_weight"] * order_list_df["quantity"]
         )
 
-        total_weight_by_order = df_order_list.groupby("order_number")[
+        total_weight_by_order = order_list_df.groupby("order_number")[
             "item_total_weight"
         ].sum()
-        df_order_list["total_weight_by_order"] = df_order_list["order_number"].map(
+        order_list_df["total_weight_by_order"] = order_list_df["order_number"].map(
             total_weight_by_order
         )
         logger.info("Weight data adjusted")
 
         ### Determine box size
-        df_order_list["box_size"] = df_order_list.apply(determine_box_size, axis=1)
+        order_list_df["box_size"] = order_list_df.apply(determine_box_size, axis=1)
 
         # log
         logger.info("Determine box size")
         log_set_callback("주문리스트의 박스 정보 입력")
 
-        ########################################## Data Transformation ##########################################
+        ########################################## Data transformation using pandas ##########################################
         ### Generate serial numbers for unique order_numbers; set blank for subsequent duplicates
         # Step 1: Mark True for the first occurrence of each order_number
-        df_order_list["serial_number"] = ~df_order_list["order_number"].duplicated()
+        order_list_df["serial_number"] = ~order_list_df["order_number"].duplicated()
 
         # Step 2: Assign a running number to the first occurrences. cumsum: cumulative sum
-        df_order_list["serial_number"] = df_order_list["serial_number"].cumsum()
+        order_list_df["serial_number"] = order_list_df["serial_number"].cumsum()
 
         logger.info("Serial numbers generated")
 
@@ -162,14 +177,20 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         # For each column, replace duplicate values with ''
         for col in cols_to_clean:
-            df_order_list[col] = df_order_list[col].where(
-                ~df_order_list["serial_number"].duplicated(), ""
+            order_list_df[col] = order_list_df[col].where(
+                ~order_list_df["serial_number"].duplicated(), ""
             )
         logger.info("Clean duplicated value")
 
         # If 'pickup' column contains '방문수령', replace it with 'O'
-        df_order_list.loc[df_order_list["pickup"] == "방문수령", "pickup"] = "O"
+        order_list_df.loc[order_list_df["pickup"] == "방문수령", "pickup"] = "O"
         logger.info("Reorganize pickup column")
+
+        # Replace product_name with internal_product_name if not NaN
+        order_list_df.loc[
+            order_list_df["product_name"].str.contains("개인", na=False),
+            "product_name",
+        ] = order_list_df["internal_product_name"]
 
         ### Reorder column
         column_order = [
@@ -188,10 +209,10 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "subscription_cycle",
             "membership_level",
         ]
-        df_order_list[column_order].to_excel(order_list_path, index=False)
-        ########################################## Document design for order list(fill the color) ##########################################
+        order_list_df[column_order].to_excel(order_list_path, index=False)
+        ########################################## Document design for order list(fill the color) using openpyxl ##########################################
 
-        df_order_list = pd.read_excel(order_list_path)
+        order_list_df = pd.read_excel(order_list_path)
         # Load the workbook and worksheet
         wb = load_workbook(order_list_path)
         ws = wb.active
@@ -210,7 +231,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         ### Apply conditional formatting
         # quantity >= 2 → Red
-        quantity_col = df_order_list.columns.get_loc("quantity") + 1
+        quantity_col = order_list_df.columns.get_loc("quantity") + 1
         logger.info("quantity_col: %s", quantity_col)
         ws.conditional_formatting.add(
             f"{chr(64 + quantity_col)}2:{chr(64 + quantity_col)}{max_row}",
@@ -222,9 +243,9 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         )
 
         # subscription_cycle not blank → Blue
-        logger.info("df_order_list: %s", df_order_list)
-        product_col = df_order_list.columns.get_loc("product_name") + 1
-        sub_col = df_order_list.columns.get_loc("subscription_cycle") + 1
+        logger.info("df_order_list: %s", order_list_df)
+        product_col = order_list_df.columns.get_loc("product_name") + 1
+        sub_col = order_list_df.columns.get_loc("subscription_cycle") + 1
         logger.info("sub_col: %s", sub_col)
 
         product_col_letter = chr(64 + product_col)
@@ -240,8 +261,8 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         )
 
         # order_number duplicates → Gray
-        serial_num_col = df_order_list.columns.get_loc("serial_number") + 1
-        serial_numbers = df_order_list["serial_number"]
+        serial_num_col = order_list_df.columns.get_loc("serial_number") + 1
+        serial_numbers = order_list_df["serial_number"]
         duplicates = serial_numbers[serial_numbers.duplicated(keep=False)].unique()
 
         for row in range(2, max_row + 1):
@@ -251,7 +272,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
                 ws.cell(row=row, column=serial_num_col + 1).fill = gray_fill
 
         ########################################## Document design for order list ##########################################
-        price_col = df_order_list.columns.get_loc("price") + 1
+        price_col = order_list_df.columns.get_loc("price") + 1
         for row in ws.iter_rows(min_row=2, min_col=price_col, max_col=price_col):
             for cell in row:
                 cell.number_format = "#,##0"
@@ -268,7 +289,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         ### Insert the box size counts at the buttom
         # Count the occurrences of each box size and convert the result into a DataFrame
-        box_size_counts = df_order_list["box_size"].value_counts().reset_index()
+        box_size_counts = order_list_df["box_size"].value_counts().reset_index()
         box_size_counts.columns = ["박스", "개수"]
 
         custom_order = [1, 2, 3, 420, 287]
@@ -309,8 +330,8 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "pickup": 3,
         }
 
-        for col in df_order_list.columns.to_list():
-            col_idx = df_order_list.columns.get_loc(col) + 1
+        for col in order_list_df.columns.to_list():
+            col_idx = order_list_df.columns.get_loc(col) + 1
             col_letter = chr(64 + col_idx)
             if col in column_widths.keys():
                 ws.column_dimensions[col_letter].width = column_widths.get(col)
@@ -354,7 +375,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         wb.save(order_list_path)
 
         ########################################## Multiple items process for hanjin list ##########################################
-        flatten_order_items_by_order_number(df_hanjin_list).rename(
+        flatten_order_items_by_order_number(hanjin_list_df).rename(
             columns=ENG_TO_KOR_COLUMN_MAP
         ).to_excel(hanjin_path, index=False)
 
