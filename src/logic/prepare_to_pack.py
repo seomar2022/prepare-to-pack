@@ -146,6 +146,11 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         ### Determine box size
         order_list_df["box_size"] = order_list_df.apply(determine_box_size, axis=1)
+        logger.info(
+            order_list_df[
+                ["order_number", "product_name", "total_weight_by_order", "box_size"]
+            ]
+        )
 
         # log
         logger.info("Determine box size")

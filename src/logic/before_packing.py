@@ -53,13 +53,26 @@ def determine_box_size(row):
 
     total_weight_by_order = row["total_weight_by_order"]
 
+    if (
+        "로얄캐닌 캣 가스트로인테스티널 화이버 리스폰스" in row["product_name"]
+        and total_weight_by_order == 2
+    ):
+        return 2
+    if (
+        "캔" in row["product_name"]
+        and total_weight_by_order >= 2.124
+        and total_weight_by_order <= 2.520
+    ):
+        # Can: 354g * 6 items ~ 420g * 6 items
+        return 2
+
     if total_weight_by_order < 1:
         return 1
     elif total_weight_by_order < 2:
         return 2
-    elif total_weight_by_order < 3.8:
-        return 3
     elif total_weight_by_order <= 4:
+        return 3
+    elif total_weight_by_order < 5:
         return 420
     elif total_weight_by_order < 8:
         return 287
