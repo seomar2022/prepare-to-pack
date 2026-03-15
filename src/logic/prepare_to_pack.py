@@ -187,9 +187,10 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             )
         logger.info("Clean duplicated value")
 
+        ### Deprecated: user no longer uses this
         # If 'pickup' column contains '방문수령', replace it with 'O'
-        order_list_df.loc[order_list_df["pickup"] == "방문수령", "pickup"] = "O"
-        logger.info("Reorganize pickup column")
+        # order_list_df.loc[order_list_df["pickup"] == "방문수령", "pickup"] = "O"
+        # logger.info("Reorganize pickup column")
 
         # Replace product_name with internal_product_name if not NaN
         order_list_df.loc[
@@ -210,7 +211,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "recipient_address",
             "delivery_message",
             "box_size",
-            "pickup",
+            # "pickup",# Deprecated: user no longer uses this
             "subscription_cycle",
             "membership_level",
         ]
@@ -332,7 +333,7 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "recipient_address": 28,
             "delivery_message": 14,
             "box_size": 5,
-            "pickup": 3,
+            # "pickup": 3,# Deprecated: user no longer uses this
         }
 
         for col in order_list_df.columns.to_list():
