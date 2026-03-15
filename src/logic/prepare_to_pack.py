@@ -47,13 +47,33 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         ########################################## Split file from download folder ##########################################
         # Get the folder path from setting\path.csv where the raw file is located
         download_from_internet_path = search_path()
+        logger.info(f"download_from_internet_path = {repr(download_from_internet_path)}")
+
+        if not download_from_internet_path:
+            logger.error("download_from_internet_path is empty.")
+            log_set_callback("⚠️오류 발생: 파일을 어디서 찾을지 지정되어 있지 않습니다. 설정 버튼을 클릭해 폴더를 지정해 주세요.")
+        else:
+            logger.info(f"download folder exists: {os.path.exists(download_from_internet_path)}")
+            log_set_callback(f"파일 검색 폴더: {download_from_internet_path}")
+            
 
         # Find the file downloaded from Cafe24
         # File name format downloaded from Cafe24: lalapetmall_today's_date_serialnumber_serialnumber
+        search_pattern = "lalapetmall_" + datetime.today().strftime("%Y%m%d") + "_"
+
         download_from_cafe24_path = find_path_by_partial_name(
             download_from_internet_path,
-            "lalapetmall_" + datetime.today().strftime("%Y%m%d") + "_",
+            search_pattern,
         )
+
+        logger.info(f"download_from_cafe24_path = {repr(download_from_cafe24_path)}")
+
+        if not download_from_cafe24_path:
+            logger.error(
+                f"No file found in '{download_from_internet_path}' matching pattern '{search_pattern}'"
+            )
+            log_set_callback(f"⚠️오류 발생: {search_pattern}로 시작하는 파일을 찾을 수 없습니다. 파일이 있는지 확인하거나, 파일명의 날짜가 오늘 날짜인지 확인해 주세요.")
+
         raw_data_df = pd.read_csv(download_from_cafe24_path)
 
         # log
