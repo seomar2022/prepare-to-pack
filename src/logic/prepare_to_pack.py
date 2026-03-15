@@ -166,11 +166,11 @@ def prepare_to_pack(log_set_callback, log_get_callback):
 
         ### Determine box size
         order_list_df["box_size"] = order_list_df.apply(determine_box_size, axis=1)
-        logger.info(
-            order_list_df[
-                ["order_number", "product_name", "total_weight_by_order", "box_size"]
-            ]
-        )
+        # logger.info(
+        #     order_list_df[
+        #         ["order_number", "product_name", "total_weight_by_order", "box_size"]
+        #     ]
+        # )
 
         # log
         logger.info("Determine box size")
@@ -218,6 +218,12 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "product_name",
         ] = order_list_df["internal_product_name"]
 
+        ### Add two empty columns for manual checking by the user
+        logger.info("df_order_list: %s", order_list_df.columns)
+        order_list_df.insert(len(order_list_df.columns), "expiration_date", "")
+        order_list_df.insert(len(order_list_df.columns), "inspection", "")
+        logger.info("df_order_list: %s", order_list_df.columns)
+
         ### Reorder column
         column_order = [
             "serial_number",
@@ -234,6 +240,8 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             # "pickup",# Deprecated: user no longer uses this
             "subscription_cycle",
             "membership_level",
+            "expiration_date",
+            "inspection",
         ]
         order_list_df[column_order].to_excel(order_list_path, index=False)
         ########################################## Document design for order list(fill the color) using openpyxl ##########################################
@@ -269,10 +277,10 @@ def prepare_to_pack(log_set_callback, log_get_callback):
         )
 
         # subscription_cycle not blank → Blue
-        logger.info("df_order_list: %s", order_list_df)
+        # logger.info("df_order_list: %s", order_list_df)
         product_col = order_list_df.columns.get_loc("product_name") + 1
         sub_col = order_list_df.columns.get_loc("subscription_cycle") + 1
-        logger.info("sub_col: %s", sub_col)
+        # logger.info("sub_col: %s", sub_col)
 
         product_col_letter = chr(64 + product_col)
         sub_col_letter = chr(64 + sub_col)
@@ -347,13 +355,15 @@ def prepare_to_pack(log_set_callback, log_get_callback):
             "orderer_name": 7,
             "product_name": 38,
             "option": 16,
-            "quantity": 4,
+            "quantity": 3,
             "recipient_name": 7,
             "price": 8,
-            "recipient_address": 28,
-            "delivery_message": 14,
+            "recipient_address": 20,
+            "delivery_message": 13,
             "box_size": 5,
             # "pickup": 3,# Deprecated: user no longer uses this
+            "expiration_date": 5,
+            "inspection": 4,
         }
 
         for col in order_list_df.columns.to_list():

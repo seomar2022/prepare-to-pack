@@ -55,4 +55,6 @@ ENG_TO_KOR_COLUMN_MAP = {
     "product_name_with_option": "상품명(옵션)",
     "box_size": "박스",
     "serial_number": "연번",
+    "expiration_date": "유통기한", # Empty column for manual checking by the user
+    "inspection": "검수", # Empty column for manual checking by the user
 }
